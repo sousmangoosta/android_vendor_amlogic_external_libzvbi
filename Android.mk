@@ -1,7 +1,7 @@
 LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 
-LOCAL_MODULE    := libam_adp
+LOCAL_MODULE    := libzvbi
 LOCAL_MODULE_TAGS := optional
 LOCAL_SRC_FILES := src/bit_slicer.c src/cache.c src/caption.c src/conv.c src/dvb_mux.c src/dvb_demux.c src/exp-html.c \
 	src/exp-templ.c src/exp-txt.c src/exp-vtx.c src/exp-gfx.c src/export.c src/hamm.c src/idl_demux.c src/io.c src/io-bktr.c src/io-dvb.c \
