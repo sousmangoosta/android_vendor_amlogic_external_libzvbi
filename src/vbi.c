@@ -435,6 +435,8 @@ vbi_decode(vbi_decoder *vbi, vbi_sliced *sliced, int lines, double time)
 		  fprintf(stderr, "vbi frame/s dropped at %f, D=%f\n",
 			  time, time - vbi->time);
 
+/*Disable desync by GK*/
+#if 0
 	  if (vbi->event_mask & (VBI_EVENT_TTX_PAGE |
 				 VBI_EVENT_NETWORK |
 				 VBI_EVENT_NETWORK_ID))
@@ -443,6 +445,7 @@ vbi_decode(vbi_decoder *vbi, vbi_sliced *sliced, int lines, double time)
 				 VBI_EVENT_NETWORK |
 				 VBI_EVENT_NETWORK_ID))
 		  vbi_caption_desync(vbi);
+#endif
 	} else {
 		pthread_mutex_lock(&vbi->chswcd_mutex);
 		
