@@ -13,11 +13,11 @@ LOCAL_CFLAGS+=-D_REENTRANT -D_GNU_SOURCE -DENABLE_DVB=1 -DENABLE_V4L=1 -DENABLE_
 LOCAL_ARM_MODE := arm
 LOCAL_C_INCLUDES := $(LOCAL_PATH)/../dvb/android/ex_include
 
-LOCAL_SHARED_LIBRARIES += liblog
+LOCAL_SHARED_LIBRARIES +=
 LOCAL_STATIC_LIBRARIES += libiconv
 
 LOCAL_PRELINK_MODULE := false
 
 include $(BUILD_SHARED_LIBRARY)
 
-#include $(LOCAL_PATH)/../dvb/android/ex_lib/Android.mk
+include $(LOCAL_PATH)/../dvb/android/ex_lib/Android.mk

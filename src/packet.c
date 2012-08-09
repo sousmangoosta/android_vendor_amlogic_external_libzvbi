@@ -2075,16 +2075,14 @@ vbi_decode_teletext(vbi_decoder *vbi, uint8_t *p)
 				curr = rvtp;
 				vtp = curr->page;
 
-				//Fixed by GK
-				/*if ((vtp->pgno & 0xFF) == page)
-					break;*/
+				if ((vtp->pgno & 0xFF) == page)
+					break;
 			}
 
 			switch (vtp->function) {
 			case PAGE_FUNCTION_DISCARD:
 			case PAGE_FUNCTION_EPG:
-				//Fixed by GK
-				//break;
+				break;
 
 			case PAGE_FUNCTION_LOP:
 				if (!store_lop(vbi, vtp))
