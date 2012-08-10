@@ -1836,6 +1836,7 @@ extern void		vbi_resolve_link(vbi_page *pg, int column, int row,
 					 vbi_link *ld);
 extern void		vbi_resolve_home(vbi_page *pg, vbi_link *ld);
 
+extern vbi_bool         vbi_get_next_pgno(vbi_decoder *vbi, int dir, vbi_pgno *pgno, vbi_pgno *subno);
 
 /* tables.h */
 

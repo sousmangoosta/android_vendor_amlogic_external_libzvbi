@@ -470,6 +470,18 @@ _vbi_ttx_charset_init		(const vbi_ttx_charset *charset[2],
 				 const struct ttx_extension *ext,
 				 const cache_page *	cp);
 
+extern cache_page *
+_vbi_cache_find_next_page       (vbi_cache * ca,
+				 int dir,
+				 vbi_subno pgno,
+				 vbi_subno subno);
+
+extern cache_page *
+_vbi_cache_find_page            (vbi_cache * ca,
+				 int dir,
+				 vbi_subno pgno);
+
+
 #endif /* CACHE_PRIV_H */
 
 /*

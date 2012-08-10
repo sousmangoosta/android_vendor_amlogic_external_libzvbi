@@ -119,6 +119,8 @@ extern vbi_bool		vbi_format_vt_page(vbi_decoder *, vbi_page *,
 					   int display_rows,
 					   vbi_bool navigation);
 
+extern vbi_bool         vbi_get_next_pgno(vbi_decoder *vbi, int dir, vbi_pgno *pgno, vbi_pgno *subno);
+
 #endif
 
 /*
