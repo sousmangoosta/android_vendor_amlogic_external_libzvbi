@@ -30,7 +30,7 @@
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
-#include <iconv.h>
+#include <am_iconv.h>
 
 #include "lang.h"
 #include "export.h"

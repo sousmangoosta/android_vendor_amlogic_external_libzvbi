@@ -34,7 +34,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/stat.h>
-#include <iconv.h>
+#include <am_iconv.h>
 
 #include "export.h"
 #include "conv.h"

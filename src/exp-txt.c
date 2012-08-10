@@ -26,7 +26,7 @@
 #endif
 
 #include <limits.h>
-#include <iconv.h>
+#include <am_iconv.h>
 
 #include "misc.h"
 #include "lang.h"

@@ -9,15 +9,13 @@ LOCAL_SRC_FILES := src/bit_slicer.c src/cache.c src/caption.c src/conv.c src/dvb
 	src/pfc_demux.c src/proxy-client.c src/raw_decoder.c src/sampling_par.c src/search.c src/ure.c src/sliced_filter.c \
 	src/tables.c src/trigger.c src/vbi.c src/vps.c src/wss.c src/xds_demux.c src/decoder.c src/dtvcc.c
 
-LOCAL_CFLAGS+=-D_REENTRANT -D_GNU_SOURCE -DENABLE_DVB=1 -DENABLE_V4L=1 -DENABLE_V4L2=1 -DHAVE_ICONV=1 -DPACKAGE=\"zvbi\" -DVERSION=\"0.2.33\"
+LOCAL_CFLAGS+=-D_REENTRANT -D_GNU_SOURCE -DENABLE_DVB=1 -DENABLE_V4L=1 -DENABLE_V4L2=1 -DHAVE_ICONV=1 -DPACKAGE=\"zvbi\" -DVERSION=\"0.2.33\" -DANDROID
 LOCAL_ARM_MODE := arm
-LOCAL_C_INCLUDES := $(LOCAL_PATH)/../dvb/android/ex_include
+LOCAL_C_INCLUDES := external/dvb/include/am_adp\
+	external/icu4c/common
 
-LOCAL_SHARED_LIBRARIES +=
-LOCAL_STATIC_LIBRARIES += libiconv liblog
+LOCAL_SHARED_LIBRARIES += libicuuc liblog
 
 LOCAL_PRELINK_MODULE := false
 
 include $(BUILD_SHARED_LIBRARY)
-
-include $(LOCAL_PATH)/../dvb/android/ex_lib/Android.mk
