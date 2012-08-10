@@ -592,6 +592,7 @@ vbi_draw_cc_page_region(vbi_page *pg,
  *   space (U+0020).
  * @param flash_on If FALSE, draw characters flagged 'blink' (see vbi_char) as
  *   space (U+0020).
+ * @param subtitle If TRUE, draw subtitle mode teletext.
  * 
  * Draw a subsection of a Teletext vbi_page. In this mode one
  * character occupies 12 x 10 pixels.  Note this function does
@@ -601,7 +602,7 @@ void
 vbi_draw_vt_page_region(vbi_page *pg,
 			vbi_pixfmt fmt, void *canvas, int rowstride,
 			int column, int row, int width, int height,
-			int reveal, int flash_on)
+			int reveal, int flash_on, int subtitle)
 {
         union {
 	        vbi_rgba        rgba[64];
@@ -657,12 +658,25 @@ vbi_draw_vt_page_region(vbi_page *pg,
 			else
 				unicode = ac->unicode;
 
+			if (subtitle && (row == 0))
+				unicode = 0x0020;
+
                         if (canvas_type == 1) {
                                 pen.pal8[0] = ac->background;
                                 pen.pal8[1] = ac->foreground;
                         } else {
                                 pen.rgba[0] = pg->color_map[ac->background];
                                 pen.rgba[1] = pg->color_map[ac->foreground];
+
+                                if(subtitle){
+        	                        if(vbi_is_drcs(unicode) || unicode==0x0020) {
+						pen.rgba[0] &= 0x00FFFFFF;
+                	                	pen.rgba[1] &= 0x00FFFFFF;
+                        	        }else{
+						pen.rgba[0] &= 0x00FFFFFF;
+						//pen.rgba[0] |= 0x80000000;
+					}
+                                }
                         }
 
 			switch (ac->size) {
@@ -1032,7 +1046,7 @@ ppm_export			(vbi_export *		e,
 						 /* column */ 0, row,
 						 pg->columns, /* rows */ 1,
 						 /* reveal */ !e->reveal,
-						 /* flash_on */ TRUE);
+						 /* flash_on */ TRUE, FALSE);
 			}
 
 		d = (uint8_t *) e->buffer.data + e->buffer.offset;

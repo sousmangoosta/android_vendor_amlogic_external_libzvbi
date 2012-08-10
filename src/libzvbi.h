@@ -1669,13 +1669,13 @@ extern void		vbi_draw_vt_page_region(vbi_page *pg, vbi_pixfmt fmt,
 						void *canvas, int rowstride,
 						int column, int row,
 						int width, int height,
-						int reveal, int flash_on);
+						int reveal, int flash_on, int subtitle);
 _vbi_inline void
 vbi_draw_vt_page(vbi_page *pg, vbi_pixfmt fmt, void *canvas,
-		 int reveal, int flash_on)
+		 int reveal, int flash_on, int subtitle)
 {
 	vbi_draw_vt_page_region(pg, fmt, canvas, -1, 0, 0,
-				pg->columns, pg->rows, reveal, flash_on);
+				pg->columns, pg->rows, reveal, flash_on, subtitle);
 }
 
 extern void		vbi_draw_cc_page_region(vbi_page *pg, vbi_pixfmt fmt,
