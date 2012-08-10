@@ -2397,8 +2397,9 @@ vbi_decode_teletext(vbi_decoder *vbi, uint8_t *p)
 		case PAGE_FUNCTION_EACEM_TRIGGER:
 			for (n = i = 0; i < 40; i++)
 				n |= vbi_unpar8 (p[i]);
-			if (n < 0)
-				return FALSE;
+			//Fixed by GK
+			/*if (n < 0)
+				return FALSE;*/
 
 			/* fall through */
 

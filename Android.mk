@@ -14,7 +14,7 @@ LOCAL_ARM_MODE := arm
 LOCAL_C_INCLUDES := $(LOCAL_PATH)/../dvb/android/ex_include
 
 LOCAL_SHARED_LIBRARIES +=
-LOCAL_STATIC_LIBRARIES += libiconv
+LOCAL_STATIC_LIBRARIES += libiconv liblog
 
 LOCAL_PRELINK_MODULE := false
 
