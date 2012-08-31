@@ -241,7 +241,6 @@ stream_delete			(struct stream *	st)
 vbi_bool
 stream_loop			(struct stream *	st)
 {
-	printf("stream_loop11\n");
 	return st->loop (st);
 }
 
@@ -883,8 +882,6 @@ next_block			(struct stream *	st,
 
 		if (buffer_size <= available) {
 			memcpy (buffer, st->bp, buffer_size);
-			printf("block %d,%d  %d  %d \n",buffer[0],buffer[1],buffer[2],buffer[3]);
-			
 			st->bp += buffer_size;
 			return;
 		}
@@ -1029,15 +1026,10 @@ next_time_delta			(struct stream *	st,
 				return TRUE;
 			}
 		}
-		c =c + '0';
-		if(isdigit (c))
-				printf("is digit\n");
-		else
-				printf("isnot digit\n");
-				
+
 		if ('-' != c && '.' != c && !isdigit (c))
 			bad_format_exit ();
-			return TRUE;
+
 		buffer[i] = c;
 	}
 
@@ -1047,7 +1039,6 @@ next_time_delta			(struct stream *	st,
 static vbi_bool
 read_loop_old_sliced		(struct stream *	st)
 {
-	int ii  = 0;
 	printf("start read_loop_old_sliced ");
 	for (;;) {
 		vbi_sliced *s;
@@ -1079,10 +1070,10 @@ read_loop_old_sliced		(struct stream *	st)
 		printf("n_lines = %d",n_lines);
 		if ((unsigned int) n_lines > N_ELEMENTS (st->sliced))
 			n_lines = N_ELEMENTS (st->sliced);   //bad_format_exit ();
-		
+		if(n_lines == 0)
+			break;
 		
 
-		printf(" N_ELEMENTS (st->sliced)=%d  \n", N_ELEMENTS (st->sliced));	
 		s = st->sliced;
 		raw = NULL;
 		st->raw_valid = FALSE;
@@ -1183,17 +1174,11 @@ read_loop_old_sliced		(struct stream *	st)
 						st->stream_time);
 		} else {
 				printf("st->raw_valid && st->decode_raw isnot true\n");
-				//printf(" st->sliced->line=%d \n",st->sliced->line);
-				//printf(" st->sliced->data=%c st->sliced->data[1]=%c \n",st->sliced->data,st->sliced->data[1]);
-				//printf(" s->data= %c s->data[1]=%c \n",s->data[0],s->data[1]);
+		
 			    success = st->callback (st->sliced, n_lines,
 						raw, &sp,
 						st->sample_time,
 						st->stream_time);
-				if(ii == 0)
-					ii ++;
-				else
-					return FALSE;
 		}
 
 		free (raw);
