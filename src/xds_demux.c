@@ -247,13 +247,16 @@ _vbi_xds_packet_dump		(const vbi_xds_packet *	xp,
 			
 			if (2 != xp->buffer_size)
 				goto invalid;
-
+			printf("xp->buffer[0] = %d,xp->buffer[1] = %d\n ",xp->buffer[0] ,xp->buffer[1] );
 			r	= xp->buffer[0] & 7;
 			g	= xp->buffer[1] & 7;
-
-			fprintf (fp, " (movie: %s, tv: ",
-				 vbi_rating_string (VBI_RATING_AUTH_MPAA, r));
-
+			printf("r = %d,g = %d \n",r,g);
+			if (( xp->buffer[0] & 0x08) == 0) {
+				if (r == 0) return;
+				//auth = VBI_RATING_AUTH_MPAA;
+				fprintf (fp, " (movie: %s, tv: ",
+				vbi_rating_string (VBI_RATING_AUTH_MPAA, r));
+			}
 			if (xp->buffer[0] & 0x10) {
 				const char *s;
 			
@@ -862,12 +865,13 @@ vbi_xds_demux_feed		(vbi_xds_demux *	xd,
 	sp = xd->curr_sp;
 
 	log ("XDS demux %02x %02x\n", buffer[0], buffer[1]);
-
-	c1 = vbi_unpar8 (buffer[0]);
-	c2 = vbi_unpar8 (buffer[1]);
-
-	if ((c1 | c2) < 0) {
-		log ("XDS tx error, discard current packet\n");
+	printf("XDS demux %02x %02x\n", buffer[0], buffer[1]);
+	
+	c1 = buffer[0] ;//c1 = vbi_unpar8 (buffer[0]);
+	c2 = buffer[1] ;//c2 = vbi_unpar8 (buffer[1]);
+	printf("XDS demux %02x %02x\n", c1, c2);
+	if(0){	//if ((c1 | c2) < 0) {
+		printf ("XDS tx error, discard current packet\n");
  
 		if (sp) {
 			sp->count = 0;
@@ -892,19 +896,20 @@ vbi_xds_demux_feed		(vbi_xds_demux *	xd,
 		unsigned int i;
 
 		/* Packet header. */
-
+		
 		xds_class = (c1 - 1) >> 1;
 		xds_subclass = c2;
-
+		printf("xds_class = %d  xds_subclass = %d\n",xds_class,xds_subclass);
 		i = xds_subclass;
-
+	
 		/* MISC subclass 0x4n */
 		if (i >= 0x40)
 			i += 0x10 - 0x40;
 
+		printf(" %d   %d   %d   %d  \n",xds_class,VBI_XDS_CLASS_MISC,i,N_ELEMENTS (xd->subpacket[0]));
 		if (xds_class > VBI_XDS_CLASS_MISC
 		    || i > N_ELEMENTS (xd->subpacket[0])) {
-			log ("XDS ignore packet 0x%x/0x%02x, "
+			printf ("XDS ignore packet 0x%x/0x%02x, "
 			     "unknown class or subclass\n",
 			     xds_class, xds_subclass);
 			goto discard;
@@ -920,10 +925,11 @@ vbi_xds_demux_feed		(vbi_xds_demux *	xd,
 			/* Start packet. */
 			sp->checksum = c1 + c2;
 			sp->count = 2;
+			printf("c1 == 1");
 		} else {
 			/* Continue packet. */
 			if (0 == sp->count) {
-				log ("XDS can't continue packet "
+				printf ("XDS can't continue packet "
 				     "0x%x/0x%02x, missed start\n",
 				     xd->curr.xds_class,
 				     xd->curr.xds_subclass);
@@ -938,28 +944,33 @@ vbi_xds_demux_feed		(vbi_xds_demux *	xd,
 		/* Packet terminator. */
 
 		if (!sp) {
-			log ("XDS can't finish packet, missed start\n");
+			printf ("XDS can't finish packet, missed start\n");
 			break;
 		}
 
+		printf ("XDS sp->count = %d\n",sp->count);
 		sp->checksum += c1 + c2;
 
 		if (0 != (sp->checksum & 0x7F)) {
-			log ("XDS ignore packet 0x%x/0x%02x, "
+			printf ("XDS ignore packet 0x%x/0x%02x, "
 			     "checksum error\n",
 			     xd->curr.xds_class, xd->curr.xds_subclass);
 		} else if (sp->count <= 2) {
-			log ("XDS ignore empty packet 0x%x/0x%02x\n",
+			printf ("XDS ignore empty packet 0x%x/0x%02x\n",
 			     xd->curr.xds_class, xd->curr.xds_subclass);
 		} else {
 			memcpy (xd->curr.buffer, sp->buffer, 32);
-
+			printf("sp->count = %d\n",sp->count);
+			int iiiii = 0;
+			for(iiiii = 0 ; iiiii < 20;iiiii++){
+				printf("sp->buffer = %d\n",sp->buffer[iiiii]);
+			}
 			xd->curr.buffer_size = sp->count - 2;
 			xd->curr.buffer[sp->count - 2] = 0;
-
+			
 			if (XDS_DEMUX_LOG)
 				_vbi_xds_packet_dump (&xd->curr, stderr);
-
+			printf("***************xds callback***********\n");
 			r = xd->callback (xd, &xd->curr, xd->user_data);
 		}
 
@@ -1000,7 +1011,7 @@ vbi_xds_demux_feed		(vbi_xds_demux *	xd,
 
 		sp->checksum += c1 + c2;
 		sp->count += 1 + (0 != c2);
-
+		printf ("XDS sp->count = %d\n",sp->count);
 		break;
 	}
 
