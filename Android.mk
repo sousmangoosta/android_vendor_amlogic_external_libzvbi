@@ -19,3 +19,5 @@ LOCAL_SHARED_LIBRARIES += libicuuc liblog
 LOCAL_PRELINK_MODULE := false
 
 include $(BUILD_SHARED_LIBRARY)
+include $(LOCAL_PATH)/ntsc_decode/Android.mk
+include $(LOCAL_PATH)/test/Android.mk
