@@ -105,6 +105,8 @@ static vbi_pfc_demux *		pfc;
 static vbi_idl_demux *		idl;
 static vbi_xds_demux *		xds;
 
+NTSC_XDS_status_cb ntsc_xds_callback = NULL;
+
 extern void
 _vbi_pfc_block_dump		(const vbi_pfc_block *	pb,
 				 FILE *			fp,
@@ -274,6 +276,8 @@ xds_cb				(vbi_xds_demux *	xd,
 	printf("************xds_cb**********\n");
 	vbi_program_info *pi;
 	_vbi_xds_packet_dump (xp, stdout);
+	
+	ntsc_xds_callback(NTSC_XDS_CB_STATUS,vbi_xds_subclass_program);
 
 	return TRUE; /* no errors */
 }
@@ -990,12 +994,13 @@ static int			option_index;
 
 
 int  start_demux_ntsc(){
+	
 	unsigned char pBuffer [5100] ;
 	memset(pBuffer,0, 5100 ); 
 	option_decode_xds = TRUE;
 	option_decode_caption = TRUE;
 	int length =  N_ELEMENTS (pBuffer);
-
+	ntsc_xds_callback(NTSC_XDS_CB_STATUS,NTSC_XDS_CB_STATUS_STARTED);
 		xds = vbi_xds_demux_new (xds_cb,
 					 /* used_data */ NULL);
 		if (NULL == xds)
@@ -1020,3 +1025,7 @@ int  start_demux_ntsc(){
 
 }
 
+void decode_ntsc_xds_set_callback(NTSC_XDS_status_cb cb_ptr){
+	printf("decode_ntsc_xds_set_callback");
+	ntsc_xds_callback = cb_ptr;
+}
