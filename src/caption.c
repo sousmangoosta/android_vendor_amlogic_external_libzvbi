@@ -38,7 +38,7 @@
 #define elements(array) (sizeof(array) / sizeof(array[0]))
 
 #define ITV_DEBUG(x) /* x */
-#define XDS_SEP_DEBUG(x) /* x */
+#define XDS_SEP_DEBUG(x) /* x */  x
 #define XDS_SEP_DUMP(x) /* x */
 #define CC_DUMP(x) /* x */
 #define CC_TEXT_DUMP(x) /* x */
@@ -147,6 +147,7 @@ static inline void
 xds_decoder(vbi_decoder *vbi, int _class, int type,
 	    uint8_t *buffer, int length)
 {
+	XDS_SEP_DEBUG(printf("xds_decoder  _class = %d,type = %d, buffer[0]=%02x, buffer[1]=%02x length = %d,\n",_class ,type,buffer[0], buffer[1],length));
 	vbi_network *n = &vbi->network.ev.network;
 	vbi_program_info *pi;
 	int neq, i;
@@ -162,9 +163,10 @@ xds_decoder(vbi_decoder *vbi, int _class, int type,
 	switch (_class) {
 	case XDS_CURRENT: /* 0 */
 	case XDS_FUTURE: /* 1 */
-		if (!(vbi->event_mask & (VBI_EVENT_ASPECT | VBI_EVENT_PROG_INFO)))
+		if (!(vbi->event_mask & (VBI_EVENT_ASPECT | VBI_EVENT_PROG_INFO))){
+			XDS_SEP_DEBUG(printf("vbi->event_mask & VBI_EVENT_ASPECT | VBI_EVENT_PROG_INFO"));
 			return;
-
+		}
 		pi = &vbi->prog_info[_class];
 		neq = 0;
 
@@ -288,7 +290,7 @@ xds_decoder(vbi_decoder *vbi, int _class, int type,
 
 			r = buffer[0] & 7;
 			g = buffer[1] & 7;
-
+			XDS_SEP_DEBUG(printf("r = %d,g = %d\n",r,g));
 			if (buffer[0] & 0x20)
 				dlsv |= VBI_RATING_D;
 			if (buffer[1] & 0x08)
@@ -324,6 +326,13 @@ xds_decoder(vbi_decoder *vbi, int _class, int type,
 				pi->rating_id = r;
 				pi->rating_dlsv = dlsv;
 			}
+			
+			//***************************************zk
+				//callback	
+				e.type = VBI_EVENT_PROG_INFO;
+				e.ev.prog_info = pi;
+				caption_send_event(vbi, &e);
+			//*******************************************finish
 
 			break;
 		}
@@ -470,16 +479,17 @@ xds_decoder(vbi_decoder *vbi, int _class, int type,
 			printf("[type %d cycle %08x class %d neq %d]\n",
 			       type, vbi->cc.info_cycle[_class], _class, neq);
 
-		if (neq) /* first occurence of this type with this data */
+		if (neq){ /* first occurence of this type with this data */
 			vbi->cc.info_cycle[_class] |= 1 << type;
+		}
 		else if (vbi->cc.info_cycle[_class] & (1 << type)) {
 			/* Second occurance of this type with same data */
-
+			
 			e.type = VBI_EVENT_PROG_INFO;
 			e.ev.prog_info = pi;
 
 			caption_send_event(vbi, &e);
-
+			XDS_SEP_DEBUG(printf("caption_send_event VBI_EVENT_PROG_INFO\n"));
 			vbi->cc.info_cycle[_class] = 0; /* all changes reported */
 		}
 
@@ -646,7 +656,7 @@ xds_separator(vbi_decoder *vbi, uint8_t *buf)
 
 			XDS_SEP_DUMP(
 				for (i = 0; i < sp->count - 2; i++)
-					printf("%c", _vbi_to_ascii (sp->buffer[i]));
+					printf("%c",  (sp->buffer[i]));  //printf("%c", _vbi_to_ascii (sp->buffer[i]));
 				printf(" %d/0x%02x\n", class, type);
 			)
 		}
@@ -895,6 +905,7 @@ _vbi_inline void
 caption_command(vbi_decoder *vbi, struct caption *cc,
 	unsigned char c1, unsigned char c2, vbi_bool field2)
 {
+    XDS_SEP_DEBUG(printf("caption_command\n"));
 	cc_channel *ch;
 	int chan, col, i;
 	int last_row;
@@ -984,7 +995,7 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 
 				c.unicode = vbi_caption_unicode (0x1130 | (c2 & 15),
 								 /* to_upper */ FALSE);
-
+				XDS_SEP_DEBUG(printf("vbi_caption_unicode %c\n",c.unicode));
 				put_char(cc, ch, c);
 			}
 		} else {		/* Midrow Codes		001 c001  010 xxxu */
@@ -1236,6 +1247,7 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 void
 vbi_decode_caption(vbi_decoder *vbi, int line, uint8_t *buf)
 {
+	XDS_SEP_DEBUG(printf("vbi_decode_caption\n"));
 	struct caption *cc = &vbi->cc;
 	char c1 = buf[0] & 0x7F;
 	int field2 = 1, i;
@@ -1258,7 +1270,7 @@ vbi_decode_caption(vbi_decoder *vbi, int line, uint8_t *buf)
 			fflush(stdout);
 		)
 
-		if (vbi_unpar8 (buf[0]) >= 0) {
+		if (vbi_unpar8 (buf[0]) >= 0) {  //vbi_unpar8 (buf[0]) >= 0
 			if (c1 == 0) {
 				goto finish;
 			} else if (c1 <= 0x0F) {
@@ -1282,7 +1294,8 @@ vbi_decode_caption(vbi_decoder *vbi, int line, uint8_t *buf)
 		goto finish;
 	}
 
-	if (vbi_unpar8 (buf[0]) < 0) {
+	//if ( (buf[0]) < 0) {  //vbi_unpar8 (buf[0]) < 0
+	if ( vbi_unpar8 (buf[0])  < 0) {  //
 		c1 = 127;
 		buf[0] = c1; /* traditional 'bad' glyph, ccfont has */
 		buf[1] = c1; /*  room, design a special glyph? */
@@ -1304,7 +1317,8 @@ vbi_decode_caption(vbi_decoder *vbi, int line, uint8_t *buf)
 		break; /* XDS field 1?? */
 
 	case 0x10 ... 0x1F:
-		if (vbi_unpar8 (buf[1]) >= 0) {
+		//if ( (buf[1]) >= 0) {  // vbi_unpar8 (buf[1])
+		if ( vbi_unpar8 (buf[1]) >= 0) {  
 			if (!field2
 			    && buf[0] == cc->last[0]
 			    && buf[1] == cc->last[1]) {
@@ -1356,8 +1370,8 @@ vbi_decode_caption(vbi_decoder *vbi, int line, uint8_t *buf)
 		c = ch->attr;
 
 		for (i = 0; i < 2; i++) {
-			char ci = vbi_unpar8 (buf[i]) & 0x7F; /* 127 if bad */
-
+			//char ci =  (buf[i]) & 0x7F; /* 127 if bad */    //vbi_unpar8 (buf[i])
+			char ci =  vbi_unpar8 (buf[i]) & 0x7F;      /* 127 if bad */  
 			if (ci <= 0x1F) /* 0x00 no char, 0x01 ... 0x1F invalid */
 				continue;
 

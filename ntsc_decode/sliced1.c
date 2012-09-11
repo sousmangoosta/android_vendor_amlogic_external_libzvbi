@@ -125,6 +125,7 @@ struct stream {
 
 	int			fd;
 	vbi_bool		close_fd;
+	void 		*userdata ;
 };
 
 #ifndef HAVE_PROGRAM_INVOCATION_NAME
@@ -847,7 +848,7 @@ read_loop_pes_ts		(struct stream *	st)
 		if (!st->callback (st->sliced, n_lines,
 				   /* raw */ NULL,
 				   /* sp */ NULL,
-				   sample_time, pts))
+				   sample_time, pts,NULL))
 			return FALSE;
 	}
 
@@ -1120,7 +1121,7 @@ read_loop_old_sliced		(struct stream *	st)
 			case 0:
 				s->id = VBI_SLICED_CAPTION_525;
 					next_block (st, s->data, 2);   
-				
+					printf(" s->data[0] =%d ,s->data[1] = %d \n",s->data[0],s->data[1]);
 				break;		
 				
 			case 1:
@@ -1171,14 +1172,16 @@ read_loop_old_sliced		(struct stream *	st)
 						st->sliced2_lines,
 						raw, &sp,
 						st->sample_time,
-						st->stream_time);
+						st->stream_time,
+						st->userdata);
 		} else {
 				printf("st->raw_valid && st->decode_raw isnot true\n");
-		
+				
 			    success = st->callback (st->sliced, n_lines,
 						raw, &sp,
 						st->sample_time,
-						st->stream_time);
+						st->stream_time,
+						st->userdata);
 		}
 
 		free (raw);
@@ -1297,7 +1300,8 @@ read_stream_new			(const char *		fbuffer,
 				 int length,
 				 enum file_format	file_format,
 				 unsigned int		ts_pid,
-				 stream_callback_fn *	callback)
+				 stream_callback_fn *	callback ,
+				 void  *userdata)
 {
 	struct stream *st;
 
@@ -1370,12 +1374,14 @@ read_stream_new			(const char *		fbuffer,
 
 	st->bp			= st->buffer;
 	st->end			= st->buffer;
+	
 	printf("finish read_stream_new" );
 	
 	//***************************************add buffer*********
 	memset (st->buffer, 0,sizeof (st->buffer));
 	memcpy (st->buffer,fbuffer, length);
 	st->end	 		= st->buffer + length;
+	st->userdata    = userdata;
 	//printf("st->bp,st->end,length === %d  %d   %d",st->bp,st->end,length	);
 	//***************************************finish*********
 	return st;
@@ -1449,7 +1455,7 @@ capture_loop			(struct stream *	st)
 		}
 
 		if (!st->callback (sliced, n_lines, raw, &st->sp,
-				   sample_time, stream_time))
+				   sample_time, stream_time,NULL))
 			return FALSE;
 	}
 

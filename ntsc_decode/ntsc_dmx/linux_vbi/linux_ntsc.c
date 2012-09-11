@@ -36,7 +36,7 @@ typedef struct
  * Static data definitions
  ***************************************************************************/
 
-static AM_ErrorCode_t vbi_open(AM_VBI_Device_t *dev, const AM_DMX_OpenPara_t *para);
+static AM_ErrorCode_t vbi_open(AM_VBI_Device_t *dev, const AM_VBI_DMX_OpenPara_t *para);
 static AM_ErrorCode_t vbi_close(AM_VBI_Device_t *dev);
 static AM_ErrorCode_t vbi_alloc_filter(AM_VBI_Device_t *dev, AM_VBI_Filter_t *filter);
 static AM_ErrorCode_t vbi_free_filter(AM_VBI_Device_t *dev, AM_VBI_Filter_t *filter);
@@ -67,7 +67,7 @@ const AM_VBI_Driver_t linux_vbi_drv = {
  * Static functions
  ***************************************************************************/
 
-static AM_ErrorCode_t vbi_open(AM_VBI_Device_t *dev, const AM_DMX_OpenPara_t *para)
+static AM_ErrorCode_t vbi_open(AM_VBI_Device_t *dev, const AM_VBI_DMX_OpenPara_t *para)
 {
 	VbiDmx_t *dmx;
 	int i;
@@ -76,7 +76,7 @@ static AM_ErrorCode_t vbi_open(AM_VBI_Device_t *dev, const AM_DMX_OpenPara_t *pa
 	if(!dmx)
 	{
 		AM_DEBUG( "not enough memory");
-		return AM_DMX_ERR_NO_MEM;
+		return AM_VBI_DMX_ERR_NO_MEM;
 	}
 	
 	//snprintf(dmx->dev_name, sizeof(dmx->dev_name), "/dev/vbi", dev->dev_no);
@@ -103,11 +103,11 @@ static AM_ErrorCode_t vbi_alloc_filter(AM_VBI_Device_t *dev, AM_VBI_Filter_t *fi
 	VbiDmx_t *dmx = (VbiDmx_t*)dev->drv_data;
 	int fd;
 
-	fd = open(dmx->dev_name, O_RDWR|O_NONBLOCK);
+	fd = open(dmx->dev_name, O_RDWR|O_NONBLOCK);//fd = open(dmx->dev_name, O_RDWR|O_NONBLOCK);
 	if(fd==-1)
 	{
 		AM_DEBUG("cannot open \"%s\" (%s)", dmx->dev_name, strerror(errno));
-		return AM_DMX_ERR_CANNOT_OPEN_DEV;
+		return AM_VBI_DMX_ERR_CANNOT_OPEN_DEV;
 	}else
 		AM_DEBUG("can open  fd=%d\n",fd);
 	
@@ -173,7 +173,7 @@ static AM_ErrorCode_t vbi_enable_filter(AM_VBI_Device_t *dev, AM_VBI_Filter_t *f
 	if(ret==-1)
 	{
 		AM_DEBUG( "start filter failed (%s)", strerror(errno));
-		return AM_DMX_ERR_SYS;
+		return AM_VBI_DMX_ERR_SYS;
 	}
 	
 	return AM_SUCCESS;
@@ -192,7 +192,7 @@ static AM_ErrorCode_t vbi_set_buf_size(AM_VBI_Device_t *dev, AM_VBI_Filter_t *fi
 	//if(ret==-1)
 	//{
 	//	AM_DEBUG( "set buffer size failed (%s)", strerror(errno));
-	//	return AM_DMX_ERR_SYS;
+	//	return AM_VBI_DMX_ERR_SYS;
 	//}
 	//**************************temp****************************///
 	
@@ -200,7 +200,7 @@ static AM_ErrorCode_t vbi_set_buf_size(AM_VBI_Device_t *dev, AM_VBI_Filter_t *fi
     if(ret==-1)
 	{
 		AM_DEBUG( "set buffer size failed (%s)", strerror(errno));
-		return AM_DMX_ERR_SYS;
+		return AM_VBI_DMX_ERR_SYS;
 	}
    
     int cc_type = 1;
@@ -208,7 +208,7 @@ static AM_ErrorCode_t vbi_set_buf_size(AM_VBI_Device_t *dev, AM_VBI_Filter_t *fi
    if(ret==-1)
 	{
 		AM_DEBUG( "set buffer size failed (%s)", strerror(errno));
-		return AM_DMX_ERR_SYS;
+		return AM_VBI_DMX_ERR_SYS;
 	}
 	
 	//**************************finish****************************///
@@ -236,14 +236,14 @@ static AM_ErrorCode_t vbi_poll(AM_VBI_Device_t *dev, AM_VBI_FilterMask_t *mask, 
 	}
 	
 	if(!cnt)
-		return AM_DMX_ERR_TIMEOUT;
+		return AM_VBI_DMX_ERR_TIMEOUT;
 	
 	AM_DEBUG("vbi_poll  *********poll cnt = %d fds[0].fd =%d \n",cnt,fds[0].fd);
 	ret = poll(fds, cnt, timeout);
 	if(ret<=0)
 	{
-		AM_DEBUG("vbi_poll  *********AM_DMX_ERR_TIMEOUT \n");
-		return AM_DMX_ERR_TIMEOUT;
+		AM_DEBUG("vbi_poll  *********AM_VBI_DMX_ERR_TIMEOUT \n");
+		return AM_VBI_DMX_ERR_TIMEOUT;
 	}
 	
 	for(i=0; i<cnt; i++)
@@ -265,24 +265,29 @@ static AM_ErrorCode_t vbi_read(AM_VBI_Device_t *dev, AM_VBI_Filter_t *filter, ui
 	struct pollfd pfd;
 	
 	if(fd==-1)
-		return AM_DMX_ERR_NOT_ALLOCATED;
+		return AM_VBI_DMX_ERR_NOT_ALLOCATED;
 	
 	pfd.events = POLLIN|POLLERR;
 	pfd.fd     = fd;
-	printf("vbi_read******************pfd.fd = %d \n",pfd.fd);
+	AM_DEBUG("vbi_read******************pfd.fd = %d \n",pfd.fd);
 	ret = poll(&pfd, 1, 0);
-	if(ret<=0)
-		return AM_DMX_ERR_NO_DATA;
-	
+	if(ret<=0){
+		return AM_VBI_DMX_ERR_NO_DATA;
+		AM_DEBUG( "vbi_read************AM_VBI_DMX_ERR_NO_DATA\n");
+	}
+
 	ret = read(fd, buf, len);
 	if(ret<=0)
 	{
 		if(errno==ETIMEDOUT)
-			return AM_DMX_ERR_TIMEOUT;
-		AM_DEBUG( "read demux failed (%s) %d", strerror(errno), errno);
-		return AM_DMX_ERR_SYS;
-	}
-	
+			return AM_VBI_DMX_ERR_TIMEOUT;
+		AM_DEBUG( "read demux failed (%s) %d\n", strerror(errno), errno);
+		return AM_VBI_DMX_ERR_SYS;
+	}else
+		AM_DEBUG("vbi_read************read result = %d\n",ret);
+		
+	AM_DEBUG("buf[0] =%d, buf[1] =%d, buf[2] =%d, buf[3] =%d, buf[4] =%d,buf[5] =%d, buf[6] =%d, buf[7] =%d \n",
+						buf[0], buf[1], buf[2], buf[3], buf[4],buf[5], buf[6], buf[7]);
 	*size = ret;
 	return AM_SUCCESS;
 }
@@ -304,6 +309,6 @@ static AM_ErrorCode_t vbi_set_source(AM_VBI_Device_t *dev, AM_VBI_DMX_Source_t s
 		break;	
 	}
 	
-return AM_DMX_ERR_CANNOT_OPEN_DEV;
+return AM_VBI_DMX_ERR_CANNOT_OPEN_DEV;
 }
 

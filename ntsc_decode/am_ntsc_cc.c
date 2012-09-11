@@ -5,9 +5,6 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <string.h>
-
-
-
 #include "vbi.h"
 #include "exp-gfx.h"
 #include "hamm.h"
@@ -15,6 +12,10 @@
 #include "sliced.h"
 #include "sliced1.h"
 #include "am_ntsc_cc.h"
+#include "vbi_dmx.h"
+
+/********************define variable***************************/
+
 
 typedef struct
 {
@@ -31,200 +32,12 @@ typedef struct
 	pthread_t          thread;
 }AM_NTSC_CC_Parser_t;
 
-/********************define variable***************************/
-#define XDS_SEP_DEBUG(x) /* x */  x
-
 vbi_pgno		pgno = -1;
-vbi_dvb_demux *		dx;
 
-/*
- *  Rudimentary render code for CC test.
- *  Attention: RGB 5:6:5 little endian only.
- */
-
-#define DISP_WIDTH	640
-#define DISP_HEIGHT	480
-
-#define CELL_WIDTH	16
-#define CELL_HEIGHT	26
-AM_NTSC_CC_Parser_t *parser;
-uint32_t *		ximgdata;
-int			shift = 0, step = 3;
-int			sh_first, sh_last;
-vbi_rgba		row_buffer[64 * CELL_WIDTH * CELL_HEIGHT];
-#define COLORKEY 0x80FF80 /* where video looks through */
-
-#define RGB565(rgba)							\
-	(((((rgba) >> 16) & 0xF8) << 8) | ((((rgba) >> 8) & 0xFC) << 3)	\
-	 | (((rgba) & 0xF8) >> 3))
-	 
-/********************define function***************************/
-
- static void
-draw_blank			(int			column,
-				 int			width)
-{
-	vbi_rgba *canvas = row_buffer + column * CELL_WIDTH;
-	int x, y;
-
-	for (y = 0; y < CELL_HEIGHT; y++) {
-		for (x = 0; x < CELL_WIDTH * width; x++)
-			canvas[x] = COLORKEY;
-		canvas += sizeof(row_buffer) / sizeof(row_buffer[0])
-			/ CELL_HEIGHT;
-	}
-}
-
-
+//AM_NTSC_CC_Parser_t *parser = NULL;
 
 static void
-draw_row			(uint32_t *		canvas,
-				 vbi_page *		pg,
-				 int			row)
-{
-	int i, j, num_tspaces = 0;
-	vbi_rgba *s = row_buffer;
-	XDS_SEP_DEBUG(printf("draw_row = %d\n",row));
-	for (i = 0; i < pg->columns; ++i) {	
-		XDS_SEP_DEBUG(printf("%02x  ",  pg->text[row * pg->columns + i].unicode));
-		if (pg->text[row * pg->columns + i].opacity
-		    == VBI_TRANSPARENT_SPACE) {
-			num_tspaces++;
-			continue;
-		}
-		if (num_tspaces > 0) {
-			draw_blank(i - num_tspaces, num_tspaces);
-			num_tspaces = 0; 
-		}
-
-		// vbi_draw_cc_page_region (pg, VBI_PIXFMT_RGBA32_LE,
-					 // row_buffer + i * CELL_WIDTH,
-					 // sizeof(row_buffer) / CELL_HEIGHT,
-					 // i, row, 1, 1);
-					 
-		vbi_draw_cc_page_region (pg, VBI_PIXFMT_RGBA32_LE,
-					 parser->para.bitmap  + i * CELL_WIDTH,
-					 sizeof(row_buffer) / CELL_HEIGHT,
-					 i, row, 1, 1);
-	}
-	
-	if (num_tspaces > 0)
-		draw_blank(i - num_tspaces, num_tspaces);
-		
-	XDS_SEP_DEBUG(printf("\npg->columns * CELL_WIDTH= %d\n",pg->columns * CELL_WIDTH));
-	return;
-	for (i = 0; i < CELL_HEIGHT; i++) {
-		for (j = 0; j < pg->columns * CELL_WIDTH; j++){
-			canvas[j] = RGB565(s[j]);
-		}
-		s += sizeof(row_buffer) / sizeof(row_buffer[0]) / CELL_HEIGHT;
-		
-		canvas += DISP_WIDTH;
-	}
-}
-
-static void
-bump				(int			n,
-				 vbi_bool		draw)
-{
-	uint32_t *canvas = ximgdata + 45 * DISP_WIDTH;
-	XDS_SEP_DEBUG(printf("bump"));
-	return;
-	if (shift < n)
-		n = shift;
-
-	if (shift <= 0 || n <= 0)
-		return;
-
-	memmove (canvas + (sh_first * CELL_HEIGHT) * DISP_WIDTH,
-		 canvas + (sh_first * CELL_HEIGHT + n) * DISP_WIDTH,
-		 ((sh_last - sh_first + 1) * CELL_HEIGHT - n)
-		 * DISP_WIDTH * 2);
-
-	//if (draw)
-	//	XPutImage (display, window, gc, ximage,
-	//		   0, 0, 0, 0, DISP_WIDTH, DISP_HEIGHT);
-
-	shift -= n;
-}
-
-
-
-static void
-render				(vbi_page *		pg,
-				 int			row)
-{
-	//* ushort *canvas = ximgdata + 48 + 45 * DISP_WIDTH; 
-	XDS_SEP_DEBUG(printf("render row %d\n",row));
-	if (shift > 0) {
-		bump(shift, FALSE);
-		//draw_video (48, 45 + sh_last * CELL_HEIGHT,
-		//	    DISP_WIDTH - 48, CELL_HEIGHT);
-	}
-	XDS_SEP_DEBUG(printf("render draw_row  %d\n",ximgdata + 48 + (45 + row * CELL_HEIGHT) * DISP_WIDTH));
-	
-	if(parser->para.draw_begin)
-		parser->para.draw_begin(parser);
-	draw_row (ximgdata + 48 + (45 + row * CELL_HEIGHT) * DISP_WIDTH,
-		  pg, row);
-	if(parser->para.draw_end)
-		parser->para.draw_end(parser);
-		
-	//XPutImage (display, window, gc, ximage,
-	//	   0, 0, 0, 0, DISP_WIDTH, DISP_HEIGHT);
-}
-
-
-static void NTSC_CC_show(AM_NTSC_CC_Parser_t *parser)
-{
-	vbi_page page;
-	vbi_bool cached;
-
-	//cached = vbi_fetch_vt_page(parser->dec, &page, vbi_dec2bcd(parser->page_no), parser->sub_page_no, VBI_WST_LEVEL_3p5, 25, AM_TRUE);
-	//if(!cached)
-	//	return;
-	
-	//parser->sub_page_no      = page.subno;
-
-	//if(parser->para.draw_begin)
-	//	parser->para.draw_begin(parser);
-	
-	/*{
-		char buf[256];
-		int i, j;
-
-		for(i=0; i<page.rows; i++){
-			char *ptr = buf;
-			for(j=0; j<page.columns; j++){
-				sprintf(ptr, "%02x", page.text[i*page.columns+j].unicode);
-				ptr += 2;
-			}
-
-			AM_DEBUG(1, "text %02d: %s", i, buf);
-		}
-	}*/
-	
-	//vbi_draw_vt_page_region(&page, VBI_PIXFMT_RGBA32_LE, parser->para.bitmap, parser->para.pitch,
-	//		0, 0, page.columns, page.rows, 1, 1, parser->para.is_subtitle);
-
-	//if(parser->para.draw_end)
-	//	parser->para.draw_end(parser);
-	
-	//vbi_unref_page(&page);
-}
-
-
-
-
-
-
-
-
-
-
-
-static void
-reset				(void)
+reset				(AM_NTSC_CC_Parser_t *parser)
 {
 	vbi_page page;
 	vbi_bool success;
@@ -234,102 +47,82 @@ reset				(void)
 	assert (success);
 
 	for (row = 0; row <= page.rows; ++row)
-		render (&page, row);
+		render (parser,&page, row);
 
 	vbi_unref_page (&page);
 }
 
 /**********************************************************/
-static void* ntsc_cc_thread(void *arg)
+
+
+ void vbi_cc_show(AM_NTSC_CC_Parser_t *parser)
+{
+	
+	vbi_page page;
+	vbi_bool success;
+	int row;
+	//user_data = user_data;
+
+	//if (pgno != -1 && parser->page_no != pgno)
+	//	return;
+
+	/* Fetching & rendering in the handler
+           is a bad idea, but this is only a test */
+	AM_DEBUG("NTSC--------------------  vbi_cc_show****************\n");
+	success = vbi_fetch_cc_page (parser->dec, &page, parser->page_no, TRUE);
+	AM_DEBUG("NTSC--------------1212------vbi_fetch_cc_page  success****************\n");
+	assert (success);
+	
+	 int i ,j;
+	 if(parser->para.draw_begin)
+		 parser->para.draw_begin(parser);
+	
+	vbi_draw_cc_page_region (&page, VBI_PIXFMT_RGBA32_LE, parser->para.bitmap,
+			parser->para.pitch, 0, 0, page.columns, page.rows);
+	
+	 if(parser->para.draw_end)
+		 parser->para.draw_end(parser);
+	vbi_unref_page (&page);
+}
+
+
+static void* vbi_cc_thread(void *arg)
 {
 	AM_NTSC_CC_Parser_t *parser = (AM_NTSC_CC_Parser_t*)arg;
 
 	pthread_mutex_lock(&parser->lock);
-
+	AM_DEBUG("NTSC***************________________ vbi_cc_thread   parser->running = %d\n",parser->running);   
 	while(parser->running)
 	{
+		AM_DEBUG("NTSC***************________________ vbi_cc_thread   disp_update = %d\n",parser->disp_update);   
 		while(parser->running && !parser->disp_update){
 			pthread_cond_wait(&parser->cond, &parser->lock);
 		}
-
+		AM_DEBUG("NTSC***************________________ vbi_cc_thread   disp_update = %d\n",parser->disp_update);  
 		if(parser->disp_update){
-			ntsc_cc_show(parser);
+			vbi_cc_show(parser);
 			parser->disp_update = FALSE;
 		}
 	}
-
 	pthread_mutex_unlock(&parser->lock);
 
 	return NULL;
 }
 
-
- void ntsc_cc_show(AM_NTSC_CC_Parser_t *parser)
+static void vbi_cc_handler(vbi_event *		ev,void *	user_data)
 {
-	vbi_page page;
-	vbi_bool success;
-	int row;
-	vbi_event *		ev;
-	//user_data = user_data;
-
-	if (pgno != -1 && ev->ev.caption.pgno != pgno)
-		return;
-
-	/* Fetching & rendering in the handler
-           is a bad idea, but this is only a test */
-
-	success = vbi_fetch_cc_page (parser->dec, &page, ev->ev.caption.pgno, TRUE);
-	assert (success);
-
-	if(parser->para.draw_begin)
-		parser->para.draw_begin(parser);
-	
-	for (row = page.dirty.y0; row <= page.dirty.y1; ++row)
-			render (&page, row);
-	
-	if(parser->para.draw_end)
-		parser->para.draw_end(parser);
-	vbi_unref_page (&page);
+	AM_NTSC_CC_Parser_t *parser = (AM_NTSC_CC_Parser_t*)user_data;
+	AM_DEBUG("NTSC--------------------  vbi_cc_handler****************");
+	//if(parser->page_no != ev->ev.caption.pgno){
+		parser->page_no = ev->ev.caption.pgno;
+		parser->disp_update = AM_TRUE;
+		pthread_cond_signal(&parser->cond);
+		
+		//vbi_cc_show(parser);
+	//}
 }
+
 /**********************************************************/
-static void
-cc_handler			(vbi_event *		ev,
-				 void *			user_data)
-{
-
-	printf("cc_handler\n");
-	vbi_page page;
-	vbi_bool success;
-	int row;
-
-	user_data = user_data;
-
-	if (pgno != -1 && ev->ev.caption.pgno != pgno)
-		return;
-
-	/* Fetching & rendering in the handler
-           is a bad idea, but this is only a test */
-
-	success = vbi_fetch_cc_page (parser->dec, &page, ev->ev.caption.pgno, TRUE);
-	assert (success);
-	XDS_SEP_DEBUG(printf("cc_handler***********success = %d\n",success));
-#if 1 /* optional */
-	if (abs (page.dirty.roll) > page.rows) {
-		XDS_SEP_DEBUG(printf("clear"));
-		//clear (&page);
-	} else if (page.dirty.roll == -1) {
-		XDS_SEP_DEBUG(printf("roll_up"));
-		//roll_up (&page, page.dirty.y0, page.dirty.y1);
-	} else {
-#endif
-	for (row = page.dirty.y0; row <= page.dirty.y1; ++row)
-			render (&page, row);
-	}
-	vbi_unref_page (&page);
-}
-
-
-
 
 static vbi_bool
 decode_frame			(const vbi_sliced *	sliced,
@@ -337,235 +130,109 @@ decode_frame			(const vbi_sliced *	sliced,
 				 const uint8_t *	raw,
 				 const vbi_sampling_par *sp,
 				 double			sample_time,
-				 int64_t		stream_time)
+				 int64_t		stream_time,
+				 void *	user_data)
 {
-	printf("decode_frame\n");
+	AM_DEBUG("NTSC--------------------  decode_frame\n");
+	if(user_data == NULL) return FALSE;
+	AM_NTSC_CC_Parser_t *parser = (AM_NTSC_CC_Parser_t*)user_data;
 	raw = raw;
 	sp = sp;
 	stream_time = stream_time; /* unused */
 
 	vbi_decode (parser->dec, sliced, n_lines, sample_time);
-
-	/* xevent (1e6 / 30); */
-
 	return TRUE;
 }
+
+
+
+ vbi_bool
+decode_vbi		(int dev_no, int fid, const uint8_t *data, int len, void *user_data){
+
+	AM_DEBUG("NTSC--------------------  decode_vbi  len = %d\n",len);
+	AM_NTSC_CC_Parser_t *parser = (AM_NTSC_CC_Parser_t*)user_data;
+	if(user_data == NULL)	
+		AM_DEBUG("NTSC--------------------  decode_vbi NOT user_data ");
+	
+    int length =  len;
+	struct stream *st;
+	if(len < 0  || data == NULL)
+		goto error;
+	st = read_stream_new (data,length,FILE_FORMAT_SLICED,
+					0,decode_frame,parser);
+	
+	stream_loop (st);
+	stream_delete (st);
+	return AM_SUCCESS;
+	
+	error:
+		return AM_FAILURE;
+  
+}
+
 
 
   vbi_bool AM_NTSC_Create(AM_NTSC_CC_Handle_t *handle, AM_NTSC_CC_Para_t *para)
 {
 	if(!para || !handle)
 	{
-		return FALSE;
+		return AM_VBI_DMX_ERROR_BASE;
 	}
-	parser = (AM_NTSC_CC_Parser_t*)malloc(sizeof(AM_NTSC_CC_Parser_t));
+	AM_NTSC_CC_Parser_t* parser = (AM_NTSC_CC_Parser_t*)malloc(sizeof(AM_NTSC_CC_Parser_t));
 	if(!parser)
 	{
-		return FALSE;
+		return AM_VBI_DMX_ERR_NOT_ALLOCATED;
 	}
-	
+	memset(parser, 0, sizeof(AM_NTSC_CC_Parser_t));
 	vbi_bool success;
 	parser->dec = vbi_decoder_new ();
 	assert (NULL != parser->dec);
 	success = vbi_event_handler_add (parser->dec, VBI_EVENT_CAPTION,
-					 cc_handler, /* used_data */ NULL);
+					 vbi_cc_handler, parser);
 	assert (success);
 	pthread_mutex_init(&parser->lock, NULL);
 	pthread_cond_init(&parser->cond, NULL);
 	
 	*handle = parser;
 	parser->para    = *para;
-	return TRUE;
+	return AM_SUCCESS;
 }
 
 
- vbi_bool AM_NTSC_CC_Start(AM_NTSC_CC_Handle_t handle)
+ AM_ErrorCode_t AM_NTSC_CC_Start(AM_NTSC_CC_Handle_t handle)
 {
-	__android_log_print(ANDROID_LOG_INFO, "NTSC_CC", "AM_NTSC_CC_Start");
+	AM_DEBUG("NTSC--------------------  ******************AM_NTSC_CC_Start \n");
 	AM_NTSC_CC_Parser_t *parser = (AM_NTSC_CC_Para_t*)handle;
-	unsigned char  pBuffer[] ={ 
-				0x00,0x01,0x02,0x00,0x15,0x00,0x00,0x00,
-				0x00,0x01,0x02,0x00,0x15,0x00,0x01,0x05,
-				0x00,0x01,0x02,0x00,0x15,0x00,0x41,0x40,
-				0x00,0x01,0x02,0x00,0x15,0x00,0x0f,0x6a,
-				0x00,0x01,0x02,0x00,0x15,0x00,0x00,0x00,
-				0x00,0x01,0x02,0x00,0x15,0x00,0x00,0x00,
-				0x00,0x01,0x02,0x00,0x15,0x00,0x15,0x2c, 
-				0x00,0x01,0x02,0x00,0x15,0x00,0x15,0x2e, 
-				0x00,0x01,0x02,0x00,0x15,0x00,0x15,0x20, 
-				0x00,0x01,0x02,0x00,0x15,0x00,0x16,0x46,
-				0x00,0x01,0x02,0x00,0x15,0x00,0x20,0x20,
-				0x00,0x01,0x02,0x00,0x15,0x00,0x10,0x22,
-				0x00,0x01,0x02,0x00,0x15,0x00,0x43,0x6c,
-				0x00,0x01,0x02,0x00,0x15,0x00,0x6f,0x73,
-				0x00,0x01,0x02,0x00,0x15,0x00,0x65,0x64,
-				0x00,0x01,0x02,0x00,0x15,0x00,0x20,0x43,
-				0x00,0x01,0x02,0x00,0x15,0x00,0x61,0x70,
-				0x00,0x01,0x02,0x00,0x15,0x00,0x74,0x69,
-				0x00,0x01,0x02,0x00,0x15,0x00,0x6f,0x6e ,
-				
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1c,0x2f,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1c,0x29,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1c,0x29,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1d,0x6a,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1d,0x6a,
-
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x41,0x00, 
-
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1a,0x20,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1a,0x20,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x45,0x00, 
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1a,0x21,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1a,0x21,
-
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x4f,0x00, 
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1a,0x22,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1a,0x22,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x55,0x00, 
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1a,0x23,
-
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1a,0x23,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x55,0x00, 
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1a,0x24,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1a,0x24,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x75,0x00, 
-				
-				
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1c,0x2f,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1c,0x29,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1c,0x29,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1d,0x6a,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1d,0x6a,
-
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x41,0x00, 
-
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1a,0x20,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1a,0x20,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x45,0x00, 
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1a,0x21,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1a,0x21,
-
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x4f,0x00, 
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1a,0x22,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1a,0x22,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x55,0x00, 
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1a,0x23,
-
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1a,0x23,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x55,0x00, 
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1a,0x24,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1a,0x24,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x75,0x00, 
-				
-				
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1c,0x2f,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1c,0x29,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1c,0x29,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1d,0x6a,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1d,0x6a,
-
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x41,0x00, 
-
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1a,0x20,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1a,0x20,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x45,0x00, 
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1a,0x21,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1a,0x21,
-
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x4f,0x00, 
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1a,0x22,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1a,0x22,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x55,0x00, 
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1a,0x23,
-
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1a,0x23,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x55,0x00, 
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1a,0x24,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1a,0x24,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x75,0x00, 
-				
-				
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1c,0x2f,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1c,0x29,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1c,0x29,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1d,0x6a,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1d,0x6a,
-
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x41,0x00, 
-
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1a,0x20,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1a,0x20,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x45,0x00, 
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1a,0x21,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1a,0x21,
-
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x4f,0x00, 
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1a,0x22,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1a,0x22,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x55,0x00, 
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1a,0x23,
-
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1a,0x23,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x55,0x00, 
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1a,0x24,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x1a,0x24,
-				0x00,0x00,0x02,0x00,0x1c,0x01,0x75,0x00, 
-			   };
-	int length =  N_ELEMENTS (pBuffer);
-	struct stream *st;
-	st = read_stream_new (pBuffer,length,
-			       FILE_FORMAT_SLICED,
-			       0,
-			       decode_frame);
-				   
-		//st = read_stream_new (/* filename: stdin */ NULL,
-		//		      FILE_FORMAT_SLICED,
-		//		      /* ts_pid */ 0,
-		//		      decode_frame);
-		//if(parser->para.draw_begin)
-		//	parser->para.draw_begin(parser);
-		
-		stream_loop (st);
-		
-		//if(parser->para.draw_end)
-		//	parser->para.draw_end(parser);
-		
-		stream_delete (st);
-	//}
-
-	printf ("Done.\n");
-
-	//for (;;)
-	//	xevent (33333);
-
-	vbi_decoder_delete (parser->dec);
-
-	
-	/*
 	vbi_bool ret = AM_SUCCESS;
 
 	if(!parser)
-	{
-		return AM_TT2_ERR_INVALID_HANDLE;
+	{	
+		AM_DEBUG("NTSC--------------------  ******************AM_CC_ERR_INVALID_HANDLE \n");
+		return AM_CC_ERR_INVALID_HANDLE;
 	}
 
 	pthread_mutex_lock(&parser->lock);
-
+	
 	if(!parser->running)
 	{
 		parser->running = AM_TRUE;
-		if(pthread_create(&parser->thread, NULL, tt2_thread, parser))
+		if(pthread_create(&parser->thread, NULL, vbi_cc_thread, parser))
 		{
 			parser->running = AM_FALSE;
-			ret = AM_TT2_ERR_CANNOT_CREATE_THREAD;
+			ret = AM_CC_ERR_CANNOT_CREATE_THREAD;
 		}
 	}
-
 	pthread_mutex_unlock(&parser->lock);
-*/
 
-
-	return TRUE;
+	return AM_SUCCESS;
 }
 
-
+void* AM_VBI_CC_GetUserData(AM_NTSC_CC_Handle_t handle)
+{
+	AM_NTSC_CC_Parser_t *parser = (AM_NTSC_CC_Para_t*)handle;
+	if(!parser)
+	{
+		return NULL;
+	}
+	return parser->para.user_data;
+}

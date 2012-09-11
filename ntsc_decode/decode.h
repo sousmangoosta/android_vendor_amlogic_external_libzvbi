@@ -7,17 +7,29 @@
  *  Author: kui zhang
  *
  *******************************************************************/
+ 
+#ifndef _DECODE_H_
+#define _DECODE_H_
 
 
-#ifndef _TRANSFER_VOD_H_
-#define _TRANSFER_VOD_H_
+
 
 #ifdef  __cplusplus
 extern "C" {
 #endif
 
 #include <sys/types.h>
-#include<unistd.h> 
+#include <unistd.h> 
+
+
+#include <unistd.h>
+#include "misc.h"
+#include "trigger.h"
+#include "format.h"
+#include "lang.h"
+#include "hamm.h"
+#include "tables.h"
+#include "vbi.h"
 
 #define NTSC_XDS_CB_STATUS 0x1000
 #define NTSC_XDS_CB_STATUS_STARTED 0x1001
@@ -35,6 +47,6 @@ int start_demux_ntsc();
 
 void decode_ntsc_xds_set_callback(NTSC_XDS_status_cb cb_ptr);
 
+vbi_bool decode_vbi_test	(int dev_no, int fid, const uint8_t *data, int len, void *user_data);
 
-
-
+#endif

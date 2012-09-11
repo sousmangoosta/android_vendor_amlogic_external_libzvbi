@@ -4,7 +4,8 @@ include $(CLEAR_VARS)
 LOCAL_SRC_FILES:=am_ntsc_cc.c  \
 				    sliced1.c    \
 				    ntsc_dmx/am_vbi_dmx.c \
-				    ntsc_dmx/linux_vbi/linux_ntsc.c 
+				    ntsc_dmx/linux_vbi/linux_ntsc.c  \
+					decode.c
 					
 LOCAL_SHARED_LIBRARIES+= libzvbi 
 

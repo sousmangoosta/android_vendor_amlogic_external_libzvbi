@@ -28,6 +28,25 @@ extern "C"
 {
 #endif
 
+
+
+enum AM_CC_ErrorCode
+{
+	AM_CC_ERROR_BASE =0,
+	AM_CC_ERR_INVALID_PARAM,   /**< 参数无效*/
+	AM_CC_ERR_INVALID_HANDLE,  /**< 句柄无效*/
+	AM_CC_ERR_NOT_SUPPORTED,   /**< 不支持的操作*/
+	AM_CC_ERR_CREATE_DECODE,   /**< 打开cc解码器失败*/
+	AM_CC_ERR_OPEN_PES,        /**< 打开PES通道失败*/
+	AM_CC_ERR_SET_BUFFER,      /**< 设置PES 缓冲区失败*/
+	AM_CC_ERR_NO_MEM,                  /**< 空闲内存不足*/
+	AM_CC_ERR_CANNOT_CREATE_THREAD,    /**< 无法创建线程*/
+	AM_CC_ERR_NOT_RUN,            /**< 无法创建线程*/
+	AM_CC_INIT_DISPLAY_FAILED,    /**< 初始化显示屏幕失败*/
+	AM_CC_ERR_END
+};
+
+
 /****************************************************************************
  * Type definitions
  ***************************************************************************/
@@ -35,15 +54,15 @@ extern "C"
 typedef void* AM_NTSC_CC_Handle_t;
 
 /**\brief 开始绘制*/
-typedef void (*AM_TT2_DrawBegin_t)(AM_NTSC_CC_Handle_t handle);
+typedef void (*AM_VBI_CC_DrawBegin_t)(AM_NTSC_CC_Handle_t handle);
 
 /**\brief 结束绘制*/
-typedef void (*AM_TT2_DrawEnd_t)(AM_NTSC_CC_Handle_t handle);
+typedef void (*AM_VBI_CC_DrawEnd_t)(AM_NTSC_CC_Handle_t handle);
 
  typedef struct
 {
-	AM_TT2_DrawBegin_t draw_begin;   /**< 开始绘制*/
-	AM_TT2_DrawEnd_t   draw_end;     /**< 结束绘制*/
+	AM_VBI_CC_DrawBegin_t draw_begin;   /**< 开始绘制*/
+	AM_VBI_CC_DrawEnd_t   draw_end;     /**< 结束绘制*/
 	vbi_bool        is_subtitle;    /**< 是否为字幕*/
 	uint8_t         *bitmap;         /**< 绘图缓冲区*/
 	int              pitch;          /**< 绘图缓冲区每行字节数*/
@@ -55,7 +74,10 @@ extern vbi_bool AM_NTSC_Create(AM_NTSC_CC_Handle_t *handle, AM_NTSC_CC_Para_t *p
 
 extern  vbi_bool AM_NTSC_CC_Start(AM_NTSC_CC_Handle_t handle);
 
+extern vbi_bool
+decode_vbi		(int dev_no, int fid, const uint8_t *data, int len, void *user_data);
 
+extern void* AM_VBI_CC_GetUserData(AM_NTSC_CC_Handle_t handle);
 
 #ifdef __cplusplus
 }

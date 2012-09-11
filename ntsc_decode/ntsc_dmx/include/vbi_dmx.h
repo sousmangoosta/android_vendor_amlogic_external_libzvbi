@@ -30,7 +30,7 @@
 #include <sys/mman.h>
 #include <sched.h>
 #include <signal.h>
-
+#include <android/log.h>
 
 #ifdef __cplusplus
 extern "C"
@@ -48,20 +48,20 @@ extern "C"
 /**\brief 解复用模块错误代码*/
 enum AM_VBI_ErrorCode
 {
-	AM_DMX_ERROR_BASE,
-	AM_DMX_ERR_INVALID_DEV_NO,          /**< 设备号无效*/
-	AM_DMX_ERR_INVALID_ID,              /**< 过滤器ID无效*/
-	AM_DMX_ERR_BUSY,                    /**< 设备已经被打开*/
-	AM_DMX_ERR_NOT_ALLOCATED,           /**< 设备没有分配*/
-	AM_DMX_ERR_CANNOT_CREATE_THREAD,    /**< 无法创建线程*/
-	AM_DMX_ERR_CANNOT_OPEN_DEV,         /**< 无法打开设备*/
-	AM_DMX_ERR_NOT_SUPPORTED,           /**< 不支持的操作*/
-	AM_DMX_ERR_NO_FREE_FILTER,          /**< 没有空闲的section过滤器*/
-	AM_DMX_ERR_NO_MEM,                  /**< 空闲内存不足*/
-	AM_DMX_ERR_TIMEOUT,                 /**< 等待设备数据超时*/
-	AM_DMX_ERR_SYS,                     /**< 系统操作错误*/
-	AM_DMX_ERR_NO_DATA,                 /**< 没有收到数据*/
-	AM_DMX_ERR_END
+	AM_VBI_DMX_ERROR_BASE = 0,
+	AM_VBI_DMX_ERR_INVALID_DEV_NO,          /**< 设备号无效*/
+	AM_VBI_DMX_ERR_INVALID_ID,              /**< 过滤器ID无效*/
+	AM_VBI_DMX_ERR_BUSY,                    /**< 设备已经被打开*/
+	AM_VBI_DMX_ERR_NOT_ALLOCATED,           /**< 设备没有分配*/
+	AM_VBI_DMX_ERR_CANNOT_CREATE_THREAD,    /**< 无法创建线程*/
+	AM_VBI_DMX_ERR_CANNOT_OPEN_DEV,         /**< 无法打开设备*/
+	AM_VBI_DMX_ERR_NOT_SUPPORTED,           /**< 不支持的操作*/
+	AM_VBI_DMX_ERR_NO_FREE_FILTER,          /**< 没有空闲的section过滤器*/
+	AM_VBI_DMX_ERR_NO_MEM,                  /**< 空闲内存不足*/
+	AM_VBI_DMX_ERR_TIMEOUT,                 /**< 等待设备数据超时*/
+	AM_VBI_DMX_ERR_SYS,                     /**< 系统操作错误*/
+	AM_VBI_DMX_ERR_NO_DATA,                 /**< 没有收到数据*/
+	AM_VBI_DMX_ERR_END
 };
 
 #define VBI_IOC_MAGIC 'X'
@@ -91,9 +91,19 @@ enum AM_VBI_ErrorCode
 #define AM_FALSE       (0)
 #endif
 
-#define AM_DEBUG  printf
 
-typedef int vbi_bool;
+#ifdef LOG_TAG
+#undef LOG_TAG
+#endif
+
+#define LOG_TAG    "VBI_DEMUX"
+#define LOGI(...)  __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
+#define LOGE(...)  __android_log_print(ANDROID_LOG_ERROR,LOG_TAG,__VA_ARGS__)
+
+
+//#define AM_DEBUG  printf
+#define AM_DEBUG  LOGI
+
 
 typedef int            AM_ErrorCode_t;
 
@@ -113,7 +123,7 @@ typedef enum
 typedef struct
 {
 	int    foo;
-} AM_DMX_OpenPara_t;
+} AM_VBI_DMX_OpenPara_t;
 
 /**\brief 数据回调函数
  * data为数据缓冲区指针，len为数据长度。如果data==NULL表示demux接收数据超时。
@@ -131,7 +141,7 @@ typedef void (*AM_DMX_DataCb) (int dev_no, int fhandle, const uint8_t *data, int
  *   - AM_SUCCESS 成功
  *   - 其他值 错误代码(见am_dmx.h)
  */
-extern AM_ErrorCode_t AM_DMX_Open(int dev_no, const AM_DMX_OpenPara_t *para);
+extern AM_ErrorCode_t AM_NTSC_DMX_Open(int dev_no, const AM_VBI_DMX_OpenPara_t *para);
 
 /**\brief 关闭解复用设备
  * \param dev_no 解复用设备号
@@ -139,7 +149,7 @@ extern AM_ErrorCode_t AM_DMX_Open(int dev_no, const AM_DMX_OpenPara_t *para);
  *   - AM_SUCCESS 成功
  *   - 其他值 错误代码(见am_dmx.h)
  */
-extern AM_ErrorCode_t AM_DMX_Close(int dev_no);
+extern AM_ErrorCode_t AM_NTSC_DMX_Close(int dev_no);
 
 /**\brief 分配一个过滤器
  * \param dev_no 解复用设备号
@@ -148,7 +158,7 @@ extern AM_ErrorCode_t AM_DMX_Close(int dev_no);
  *   - AM_SUCCESS 成功
  *   - 其他值 错误代码(见am_dmx.h)
  */
-//extern AM_ErrorCode_t AM_DMX_AllocateFilter(int dev_no, int *fhandle);
+extern AM_ErrorCode_t AM_NTSC_DMX_AllocateFilter(int dev_no, int *fhandle);
 
 /**\brief 设定Section过滤器
  * \param dev_no 解复用设备号
@@ -185,7 +195,7 @@ extern AM_ErrorCode_t AM_DMX_Close(int dev_no);
  *   - AM_SUCCESS 成功
  *   - 其他值 错误代码(见am_dmx.h)
  */
-//extern AM_ErrorCode_t AM_DMX_StartFilter(int dev_no, int fhandle);
+extern AM_ErrorCode_t AM_NTSC_DMX_StartFilter(int dev_no, int fhandle);
 
 /**\brief 停止一个过滤器
  * \param dev_no 解复用设备号
@@ -204,7 +214,7 @@ extern AM_ErrorCode_t AM_DMX_Close(int dev_no);
  *   - AM_SUCCESS 成功
  *   - 其他值 错误代码(见am_dmx.h)
  */
-extern AM_ErrorCode_t AM_DMX_SetBufferSize(int dev_no, int fhandle, int size);
+extern AM_ErrorCode_t AM_NTSC_DMX_SetBufferSize(int dev_no, int fhandle, int size);
 
 /**\brief 取得一个过滤器对应的回调函数和用户参数
  * \param dev_no 解复用设备号
@@ -226,7 +236,7 @@ extern AM_ErrorCode_t AM_DMX_SetBufferSize(int dev_no, int fhandle, int size);
  *   - AM_SUCCESS 成功
  *   - 其他值 错误代码(见am_dmx.h)
  */
-//extern AM_ErrorCode_t AM_DMX_SetCallback(int dev_no, int fhandle, AM_DMX_DataCb cb, void *data);
+extern AM_ErrorCode_t AM_NTSC_DMX_SetCallback(int dev_no, int fhandle, AM_DMX_DataCb cb, void *data);
 
 /**\brief 设置解复用设备的输入源
  * \param dev_no 解复用设备号

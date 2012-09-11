@@ -1392,7 +1392,7 @@ main				(int			argc,
 	rst = read_stream_new (pBuffer,length,
 			       option_in_file_format,
 			       option_in_ts_pid,
-			       decode_frame);
+			       decode_frame,NULL);
 				   
 	printf("stream_loop\n");
 	stream_loop (rst);

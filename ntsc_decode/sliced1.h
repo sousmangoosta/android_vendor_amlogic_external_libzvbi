@@ -68,7 +68,8 @@ stream_callback_fn		(const vbi_sliced *	sliced,
 				 const uint8_t *	raw,
 				 const vbi_sampling_par *sp,
 				 double			sample_time,
-				 int64_t		stream_time);
+				 int64_t		stream_time,
+				 void   *user_data);
 
 struct stream;
 
@@ -136,7 +137,8 @@ extern struct stream *
 read_stream_new			(const char *		pbuffer,int length,
 				 enum file_format	file_format,
 				 unsigned int		ts_pid,
-				 stream_callback_fn *	callback);
+				 stream_callback_fn *	callback,
+				 void  		*userdata);
 
 #if 2 == VBI_VERSION_MINOR
 

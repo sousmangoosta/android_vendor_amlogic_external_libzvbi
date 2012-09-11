@@ -63,7 +63,7 @@
 
 #include "sliced.h"
 #include "sliced1.h"
-
+#include "decode.h"
 #undef _
 #define _(x) x /* i18n TODO */
 
@@ -106,6 +106,11 @@ static vbi_idl_demux *		idl;
 static vbi_xds_demux *		xds;
 
 NTSC_XDS_status_cb ntsc_xds_callback = NULL;
+
+void decode_ntsc_xds_set_callback(NTSC_XDS_status_cb cb_ptr){
+	printf("decode_ntsc_xds_set_callback");
+	ntsc_xds_callback = cb_ptr;
+}
 
 extern void
 _vbi_pfc_block_dump		(const vbi_pfc_block *	pb,
@@ -277,15 +282,19 @@ xds_cb				(vbi_xds_demux *	xd,
 	vbi_program_info *pi;
 	_vbi_xds_packet_dump (xp, stdout);
 	
-	ntsc_xds_callback(NTSC_XDS_CB_STATUS,vbi_xds_subclass_program);
+	ntsc_xds_callback(NTSC_XDS_CB_STATUS,1);
 
 	return TRUE; /* no errors */
 }
 
 static void
-caption				(const uint8_t		buffer[2],
+caption				( uint8_t		buffer[2],
 				 unsigned int		line)
 {
+		printf("***********caption*********bype1=%d  bype2=%d\n",buffer[0],buffer[1]);
+		buffer[0] = vbi_unpar8 (buffer[0]);
+		buffer[1] = vbi_unpar8 (buffer[1]);
+		printf("***********caption*********modify bype1=%d  bype2=%d",buffer[0],buffer[1]);
 	if (option_decode_xds && 284 == line) {
 		if (!vbi_xds_demux_feed (xds, buffer)) {
 			printf ("Parity error in XDS data.\n");
@@ -298,6 +307,8 @@ caption				(const uint8_t		buffer[2],
 		int c1;
 		int c2;
 
+		//c1 = vbi_unpar8 (buffer[0]);
+		//c2 = vbi_unpar8 (buffer[1]);
 		c1 = buffer[0];//vbi_unpar8 (buffer[0]);
 		c2 = buffer[1];//vbi_unpar8 (buffer[1]);
 		
@@ -988,7 +999,26 @@ static int			option_index;
 
 
 
-
+ vbi_bool
+decode_vbi_test		(int dev_no, int fid, const uint8_t *data, int len, void *user_data){
+	option_decode_xds = TRUE;
+	option_decode_caption = TRUE;
+	printf("decode_vbi  len = %d\n",len);
+    int length =  len;
+	struct stream *st;
+	if(len < 0  || data == NULL)
+		goto error;
+	st = read_stream_new (data,length,
+			       FILE_FORMAT_SLICED,
+			       0,
+			       decode_frame,NULL);
+	
+	stream_loop (st);
+	stream_delete (st);
+	error:
+		return 0;
+  
+}
 
 
 
@@ -1010,7 +1040,7 @@ int  start_demux_ntsc(){
 	rst = read_stream_new (pBuffer,length,
 			       option_in_file_format,
 			       option_in_ts_pid,
-			       decode_frame);
+			       decode_frame,NULL);
 
 	stream_loop (rst);
 	stream_delete (rst);
@@ -1025,7 +1055,4 @@ int  start_demux_ntsc(){
 
 }
 
-void decode_ntsc_xds_set_callback(NTSC_XDS_status_cb cb_ptr){
-	printf("decode_ntsc_xds_set_callback");
-	ntsc_xds_callback = cb_ptr;
-}
+

@@ -13,7 +13,7 @@
 #include <signal.h>
 #include <stdio.h>
 #include <vbi_dmx.h>
-
+#include <decode.h>
 #define VBI_IOC_MAGIC 'X'
 
 
@@ -186,11 +186,14 @@ int main(int argc, char *argv[])
 }
 
 static void dump_bytes(int dev_no, int fid, const uint8_t *data, int len, void *user_data){
-	printf("dump_bytes");
+	printf("dump_bytes  len = %d\n",len);
+	decode_vbi_test( dev_no,  fid, data,  len,  user_data);
 }
+
+
 void demux_vbi_start(){
 	int fid;
-	AM_DMX_OpenPara_t para;
+	AM_VBI_DMX_OpenPara_t para;
 	memset(&para, 0, sizeof(para));
 	printf("*******************************\n\n");
 	if(	AM_NTSC_DMX_Open(VBI_DEV_NO, &para) != AM_SUCCESS) {

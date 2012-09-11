@@ -28,6 +28,7 @@
  #endif
 
 
+typedef int vbi_bool;
 /****************************************************************************
  * Macro definitions
  ***************************************************************************/
@@ -59,7 +60,7 @@ typedef uint32_t AM_VBI_FilterMask_t;
 /**\brief 解复用设备驱动*/
 typedef struct
 {
-	AM_ErrorCode_t (*open)(AM_VBI_Device_t *dev, const AM_DMX_OpenPara_t *para);
+	AM_ErrorCode_t (*open)(AM_VBI_Device_t *dev, const AM_VBI_DMX_OpenPara_t *para);
 	AM_ErrorCode_t (*close)(AM_VBI_Device_t *dev);
 	AM_ErrorCode_t (*alloc_filter)(AM_VBI_Device_t *dev, AM_VBI_Filter_t *filter);
 	AM_ErrorCode_t (*free_filter)(AM_VBI_Device_t *dev, AM_VBI_Filter_t *filter);

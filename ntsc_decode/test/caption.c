@@ -909,7 +909,7 @@ main				 (int			argc,
 		st = read_stream_new (pBuffer,length,
 			       FILE_FORMAT_SLICED,
 			       0,
-			       decode_frame);
+			       decode_frame,NULL);
 				   
 		//st = read_stream_new (/* filename: stdin */ NULL,
 		//		      FILE_FORMAT_SLICED,

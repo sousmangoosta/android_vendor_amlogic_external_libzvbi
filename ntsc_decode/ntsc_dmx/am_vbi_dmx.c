@@ -66,7 +66,7 @@ static inline AM_ErrorCode_t dmx_get_dev(int dev_no, AM_VBI_Device_t **dev)
 	if((dev_no<0) || (dev_no>=DMX_DEV_COUNT))
 	{
 		AM_DEBUG("invalid demux device number %d, must in(%d~%d)", dev_no, 0, DMX_DEV_COUNT-1);
-		return AM_DMX_ERR_INVALID_DEV_NO;
+		return AM_VBI_DMX_ERR_INVALID_DEV_NO;
 	}
 	
 	*dev = &dmx_devices[dev_no];
@@ -81,7 +81,7 @@ static inline AM_ErrorCode_t dmx_get_openned_dev(int dev_no, AM_VBI_Device_t **d
 	if(!(*dev)->openned)
 	{
 		AM_DEBUG( "demux device %d has not been openned", dev_no);
-		return AM_DMX_ERR_INVALID_DEV_NO;
+		return AM_VBI_DMX_ERR_INVALID_DEV_NO;
 	}
 	
 	return AM_SUCCESS;
@@ -95,7 +95,7 @@ static inline AM_ErrorCode_t dmx_get_used_filter(AM_VBI_Device_t *dev, int filte
 	if((filter_id<0) || (filter_id>=DMX_FILTER_COUNT))
 	{
 		AM_DEBUG( "invalid filter id, must in %d~%d", 0, DMX_FILTER_COUNT-1);
-		return AM_DMX_ERR_INVALID_ID;
+		return AM_VBI_DMX_ERR_INVALID_ID;
 	}
 	
 	filter = &dev->filters[filter_id];
@@ -103,7 +103,7 @@ static inline AM_ErrorCode_t dmx_get_used_filter(AM_VBI_Device_t *dev, int filte
 	if(!filter->used)
 	{
 		AM_DEBUG( "filter %d has not been allocated", filter_id);
-		return AM_DMX_ERR_NOT_ALLOCATED;
+		return AM_VBI_DMX_ERR_NOT_ALLOCATED;
 	}
 	
 	*pf = filter;
@@ -114,7 +114,7 @@ static inline AM_ErrorCode_t dmx_get_used_filter(AM_VBI_Device_t *dev, int filte
 static void* dmx_data_thread(void *arg)
 {
 	AM_VBI_Device_t *dev = (AM_VBI_Device_t*)arg;
-	static uint8_t sec_buf[4096];
+	static uint8_t sec_buf[128];
 	uint8_t *sec;
 	int sec_len;
 	AM_VBI_FilterMask_t mask;
@@ -123,9 +123,9 @@ static void* dmx_data_thread(void *arg)
 	while(dev->enable_thread)
 	{
 		//**********************************temp****************
-		AM_DEBUG( "***************thread count = %d\n",count);
-		if(count ++ == 100)
-			break;
+		AM_DEBUG( "***************!!!!thread count = %d\n",count++);
+		//if(count ++ == 100)
+		//	break;
 		//**********************************finish****************
 		AM_DMX_FILTER_MASK_CLEAR(&mask);
 		int id;
@@ -173,7 +173,7 @@ static void* dmx_data_thread(void *arg)
 #ifndef DMX_WAIT_CB
 				pthread_mutex_unlock(&dev->lock);
 #endif
-				if(ret==AM_DMX_ERR_TIMEOUT)
+				if(ret==AM_VBI_DMX_ERR_TIMEOUT)
 				{
 					sec = NULL;
 					sec_len = 0;
@@ -208,6 +208,7 @@ static void* dmx_data_thread(void *arg)
 		}
 		else
 			AM_DEBUG( "poll fail \n");
+		usleep(1000 * 200);
 	}
 	
 	return NULL;
@@ -286,7 +287,7 @@ static int dmx_free_filter(AM_VBI_Device_t *dev, AM_VBI_Filter_t *filter)
  *   - AM_SUCCESS 成功
  *   - 其他值 错误代码(见am_dmx.h)
  */
-AM_ErrorCode_t AM_NTSC_DMX_Open(int dev_no, const AM_DMX_OpenPara_t *para)
+AM_ErrorCode_t AM_NTSC_DMX_Open(int dev_no, const AM_VBI_DMX_OpenPara_t *para)
 {
 	AM_VBI_Device_t *dev;
 	AM_ErrorCode_t ret = AM_SUCCESS;
@@ -300,7 +301,7 @@ AM_ErrorCode_t AM_NTSC_DMX_Open(int dev_no, const AM_DMX_OpenPara_t *para)
 	if(dev->openned)
 	{
 		AM_DEBUG( "demux device %d has already been openned", dev_no);
-		ret = AM_DMX_ERR_BUSY;
+		ret = AM_VBI_DMX_ERR_BUSY;
 		goto final;
 	}
 	
@@ -322,7 +323,7 @@ AM_ErrorCode_t AM_NTSC_DMX_Open(int dev_no, const AM_DMX_OpenPara_t *para)
 		{
 			pthread_mutex_destroy(&dev->lock);
 			pthread_cond_destroy(&dev->cond);
-			ret = AM_DMX_ERR_CANNOT_CREATE_THREAD;
+			ret = AM_VBI_DMX_ERR_CANNOT_CREATE_THREAD;
 		}
 	}
 	
@@ -404,7 +405,7 @@ AM_ErrorCode_t AM_NTSC_DMX_AllocateFilter(int dev_no, int *fhandle)
 	if(fid>=DMX_FILTER_COUNT)
 	{
 		AM_DEBUG( "no free section filter");
-		ret = AM_DMX_ERR_NO_FREE_FILTER;
+		ret = AM_VBI_DMX_ERR_NO_FREE_FILTER;
 	}
 	
 	if(ret==AM_SUCCESS)
@@ -559,7 +560,7 @@ AM_ErrorCode_t AM_NTSC_DMX_SetBufferSize(int dev_no, int fhandle, int size)
 	if(!dev->drv->set_buf_size)
 	{
 		AM_DEBUG( "do not support set_buf_size");
-		ret = AM_DMX_ERR_NOT_SUPPORTED;
+		ret = AM_VBI_DMX_ERR_NOT_SUPPORTED;
 	}
 	
 	if(ret==AM_SUCCESS)
@@ -662,7 +663,7 @@ AM_ErrorCode_t AM_NTSC_DMX_SetSource(int dev_no, AM_VBI_DMX_Source_t src)
 	if(!dev->drv->set_source)
 	{
 		AM_DEBUG( "do not support set_source");
-		ret = AM_DMX_ERR_NOT_SUPPORTED;
+		ret = AM_VBI_DMX_ERR_NOT_SUPPORTED;
 	}
 	
 	if(ret==AM_SUCCESS)

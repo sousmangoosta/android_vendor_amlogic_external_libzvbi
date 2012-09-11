@@ -7,6 +7,7 @@ LOCAL_SHARED_LIBRARIES+= libzvbi libntsc_decode
 
 LOCAL_C_INCLUDES:=$(LOCAL_PATH)/../../../src \
 				  $(LOCAL_PATH)/../     \
+				   $(LOCAL_PATH)/../../  \
 				  $(LOCAL_PATH)/../include  
 
 LOCAL_MODULE:= vbi_test
