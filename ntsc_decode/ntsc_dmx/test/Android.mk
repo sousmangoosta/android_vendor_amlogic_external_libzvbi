@@ -6,7 +6,7 @@ LOCAL_SHARED_LIBRARIES+= libzvbi libntsc_decode
 
 
 LOCAL_C_INCLUDES:=$(LOCAL_PATH)/../../../src \
-				  $(LOCAL_PATH)/../     \
+				  $(LOCAL_PATH)/../../debug/test_so     \
 				   $(LOCAL_PATH)/../../  \
 				  $(LOCAL_PATH)/../include  
 

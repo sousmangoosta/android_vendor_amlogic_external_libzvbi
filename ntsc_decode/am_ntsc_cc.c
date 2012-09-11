@@ -10,7 +10,7 @@
 #include "hamm.h"
 #include "dvb_demux.h"
 #include "sliced.h"
-#include "sliced1.h"
+#include "sliced_vbi.h"
 #include "am_ntsc_cc.h"
 #include "vbi_dmx.h"
 

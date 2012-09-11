@@ -44,7 +44,7 @@
 #include "hamm.h"
 #include "dvb_demux.h"
 #include "sliced.h"
-#include "sliced1.h"
+#include "sliced_vbi.h"
 #define XDS_SEP_DEBUG(x) /* x */  x
 vbi_decoder *		vbi;
 vbi_pgno		pgno = -1;
@@ -122,7 +122,7 @@ draw_row			(uint32_t *		canvas,
 	vbi_rgba *s = row_buffer;
 	XDS_SEP_DEBUG(printf("draw_row = %d\n",row));
 	for (i = 0; i < pg->columns; ++i) {	
-		XDS_SEP_DEBUG(printf("%02x  ", unicode_ccfont2 (pg->text[row * pg->columns + i].unicode, pg->text[row * pg->columns + i].->italic)));
+		//XDS_SEP_DEBUG(printf("%02x  ", unicode_ccfont2 (pg->text[row * pg->columns + i].unicode, pg->text[row * pg->columns + i].->italic)));
 		if (pg->text[row * pg->columns + i].opacity
 		    == VBI_TRANSPARENT_SPACE) {
 			num_tspaces++;

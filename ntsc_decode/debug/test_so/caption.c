@@ -44,7 +44,7 @@
 #include "hamm.h"
 #include "dvb_demux.h"
 #include "sliced.h"
-#include "sliced1.h"
+#include "sliced_vbi.h"
 #define XDS_SEP_DEBUG(x) /* x */  x
 vbi_decoder *		vbi;
 vbi_pgno		pgno = -1;

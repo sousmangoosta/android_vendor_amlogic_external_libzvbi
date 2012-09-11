@@ -1,17 +1,17 @@
 LOCAL_PATH:= $(call my-dir)
 
 include $(CLEAR_VARS)
-LOCAL_SRC_FILES:=am_ntsc_cc.c  \
-				    sliced_vbi.c    \
-				    ntsc_dmx/am_vbi_dmx.c \
-				    ntsc_dmx/linux_vbi/linux_ntsc.c  
+LOCAL_SRC_FILES:=   decode.c  \
+				    ../../sliced_vbi.c    \
+				    ../../ntsc_dmx/am_vbi_dmx.c \
+				    ../../ntsc_dmx/linux_vbi/linux_ntsc.c  
 					
 LOCAL_SHARED_LIBRARIES+= libzvbi 
 
-LOCAL_C_INCLUDES:=$(LOCAL_PATH)/../src \
-				  $(LOCAL_PATH)/     \
-				  $(LOCAL_PATH)/ntsc_dmx/  \
-				  $(LOCAL_PATH)/ntsc_dmx/include  
+LOCAL_C_INCLUDES:=$(LOCAL_PATH)/../../../src \
+				  $(LOCAL_PATH)/../../    \
+				  $(LOCAL_PATH)/../../ntsc_dmx/  \
+				  $(LOCAL_PATH)/../../ntsc_dmx/include  
 				  
 LOCAL_MODULE:= libntsc_decode
 LOCAL_MODULE_TAGS := optional

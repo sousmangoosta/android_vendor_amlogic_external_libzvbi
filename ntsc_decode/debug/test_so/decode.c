@@ -62,7 +62,7 @@
 #endif
 
 #include "sliced.h"
-#include "sliced1.h"
+#include "sliced_vbi.h"
 #include "decode.h"
 #undef _
 #define _(x) x /* i18n TODO */

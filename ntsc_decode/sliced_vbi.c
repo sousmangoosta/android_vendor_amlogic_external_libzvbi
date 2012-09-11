@@ -51,7 +51,7 @@
 #include "io-sim.h"
 #include "raw_decoder.h"
 #include "vbi.h"
-#include "sliced1.h"
+#include "sliced_vbi.h"
 
 #if 2 == VBI_VERSION_MINOR
 #  include "proxy-msg.h"
