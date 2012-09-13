@@ -61,7 +61,7 @@ typedef void (*AM_VBI_CC_DrawBegin_t)(AM_VBI_Handle_t handle);
 typedef void (*AM_VBI_CC_DrawEnd_t)(AM_VBI_Handle_t handle);
 
 /**\brief notify xds data*/
-typedef void (*AM_VBI_xds_callback_t)(AM_VBI_Handle_t handle, vbi_xds_subclass_program xds_program,vbi_program_info *	prog_info);
+typedef void (*AM_VBI_xds_callback_t)(AM_VBI_Handle_t handle, vbi_xds_subclass_program xds_program,vbi_program_info 	prog_info);
 
  typedef struct
 {

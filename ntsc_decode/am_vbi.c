@@ -137,7 +137,8 @@ static void vbi_xds_handler	(vbi_event *		ev, void *		user_data)
 	if(ev == NULL)
 		return;
 	vbi_program_info *	prog_info = ev->ev.prog_info;
-	vbi_xds_subclass_program  xds_program;
+	
+	vbi_xds_subclass_program  xds_program = 0;
 	switch(ev->type)
 	{
 		case VBI_EVENT_ASPECT :
@@ -262,7 +263,7 @@ static void vbi_xds_handler	(vbi_event *		ev, void *		user_data)
 			
 	}
 		
-	parser->xds_para.xds_callback(parser,xds_program,prog_info);
+	parser->xds_para.xds_callback(parser,xds_program,*prog_info);
 	
 }
 
