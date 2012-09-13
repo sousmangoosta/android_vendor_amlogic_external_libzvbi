@@ -23,6 +23,7 @@
 #include "tables.h"
 #include "vbi.h"
 #include <android/log.h>    
+#include <am_xds.h>   
 #ifdef __cplusplus
 extern "C"
 {
@@ -51,13 +52,16 @@ enum AM_CC_ErrorCode
  * Type definitions
  ***************************************************************************/
  /**\brief Teletext分析器句柄*/
-typedef void* AM_NTSC_CC_Handle_t;
+typedef void* AM_VBI_Handle_t;
 
 /**\brief 开始绘制*/
-typedef void (*AM_VBI_CC_DrawBegin_t)(AM_NTSC_CC_Handle_t handle);
+typedef void (*AM_VBI_CC_DrawBegin_t)(AM_VBI_Handle_t handle);
 
 /**\brief 结束绘制*/
-typedef void (*AM_VBI_CC_DrawEnd_t)(AM_NTSC_CC_Handle_t handle);
+typedef void (*AM_VBI_CC_DrawEnd_t)(AM_VBI_Handle_t handle);
+
+/**\brief notify xds data*/
+typedef void (*AM_VBI_xds_callback_t)(AM_VBI_Handle_t handle, vbi_xds_subclass_program xds_program,vbi_program_info *	prog_info);
 
  typedef struct
 {
@@ -67,17 +71,26 @@ typedef void (*AM_VBI_CC_DrawEnd_t)(AM_NTSC_CC_Handle_t handle);
 	uint8_t         *bitmap;         /**< 绘图缓冲区*/
 	int              pitch;          /**< 绘图缓冲区每行字节数*/
 	void            *user_data;      /**< 用户定义数据*/
-}AM_NTSC_CC_Para_t;
+}AM_VBI_CC_Para_t;
+
+ typedef struct
+{
+	AM_VBI_xds_callback_t        xds_callback;      /**< notify to user */
+}AM_VBI_XDS_Para_t;
 
 
-extern vbi_bool AM_NTSC_Create(AM_NTSC_CC_Handle_t *handle, AM_NTSC_CC_Para_t *para);
 
-extern  vbi_bool AM_NTSC_CC_Start(AM_NTSC_CC_Handle_t handle);
+extern vbi_bool AM_VBI_CC_Create(AM_VBI_Handle_t *handle, AM_VBI_CC_Para_t *para);
+
+extern  vbi_bool AM_VBI_CC_Start(AM_VBI_Handle_t handle);
 
 extern vbi_bool
 decode_vbi		(int dev_no, int fid, const uint8_t *data, int len, void *user_data);
 
-extern void* AM_VBI_CC_GetUserData(AM_NTSC_CC_Handle_t handle);
+extern void* AM_VBI_CC_GetUserData(AM_VBI_Handle_t handle);
+
+
+extern vbi_bool AM_VBI_XDS_Create(AM_VBI_Handle_t *handle,AM_VBI_XDS_Para_t *para);
 
 #ifdef __cplusplus
 }
