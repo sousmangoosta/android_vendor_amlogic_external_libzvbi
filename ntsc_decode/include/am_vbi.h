@@ -80,6 +80,19 @@ typedef void (*AM_VBI_xds_callback_t)(AM_VBI_Handle_t handle, vbi_xds_subclass_p
 
 
 
+typedef enum {
+	VBI_CC1 = 0x01,
+	VBI_CC2,
+	VBI_CC3,
+	VBI_CC4,
+	VBI_TT1,
+	VBI_TT2,
+	VBI_TT3,
+	VBI_TT4,
+
+} VBI_CC_TYPE;
+
+
 extern vbi_bool AM_VBI_CC_Create(AM_VBI_Handle_t *handle, AM_VBI_CC_Para_t *para);
 
 extern  vbi_bool AM_VBI_CC_Start(AM_VBI_Handle_t handle);
@@ -89,8 +102,13 @@ decode_vbi		(int dev_no, int fid, const uint8_t *data, int len, void *user_data)
 
 extern void* AM_VBI_CC_GetUserData(AM_VBI_Handle_t handle);
 
+extern vbi_bool AM_VBI_CC_set_type(AM_VBI_Handle_t handle,VBI_CC_TYPE cc_type);  //*cc_type caption 1-4, text 1-4, garbage */
+
+extern vbi_bool AM_VBI_CC_set_status(AM_VBI_Handle_t handle,vbi_bool flag);
 
 extern vbi_bool AM_VBI_XDS_Create(AM_VBI_Handle_t *handle,AM_VBI_XDS_Para_t *para);
+
+
 
 #ifdef __cplusplus
 }

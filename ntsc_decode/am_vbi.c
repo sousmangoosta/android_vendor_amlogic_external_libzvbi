@@ -20,7 +20,7 @@
 typedef struct
 {
 	vbi_decoder       *dec;
-	//vbi_search        *search;
+	vbi_bool          cc_status;
 	AM_VBI_CC_Para_t      cc_para;
 	AM_VBI_XDS_Para_t     xds_para;
 	int                page_no;
@@ -113,15 +113,22 @@ static void* vbi_cc_thread(void *arg)
 static void vbi_cc_handler(vbi_event *		ev,void *	user_data)
 {
 	AM_VBI_Parser_t *parser = (AM_VBI_Parser_t*)user_data;
-	AM_DEBUG("NTSC--------------------  vbi_cc_handler****************");
-	//if(parser->page_no != ev->ev.caption.pgno){
-		parser->page_no = ev->ev.caption.pgno;
+	
+	if(parser->page_no  == 0)
+		return;
+	//***************************************************temp add cc status 
+	if(parser->cc_status == AM_TRUE)
+	if(parser->page_no == ev->ev.caption.pgno){
+		//parser->page_no = ev->ev.caption.pgno;
 		parser->disp_update = AM_TRUE;
 		pthread_cond_signal(&parser->cond);
 		
 		//vbi_cc_show(parser);
-	//}
+	}
 }
+
+
+
 	
 	
 	
@@ -362,7 +369,10 @@ vbi_bool AM_VBI_CC_Create(AM_VBI_Handle_t *handle, AM_VBI_CC_Para_t *para)
 	AM_DEBUG("NTSC--------------------  ******************AM_NTSC_CC_Start \n");
 	AM_VBI_Parser_t *parser = (AM_VBI_Parser_t*)handle;
 	vbi_bool ret = AM_SUCCESS;
-
+	
+	//*******************************************************temp
+	parser->cc_status = AM_TRUE;
+	//*******************************************************temp
 	if(!parser)
 	{	
 		AM_DEBUG("NTSC--------------------  ******************AM_CC_ERR_INVALID_HANDLE \n");
@@ -420,3 +430,30 @@ vbi_bool AM_VBI_XDS_Create(AM_VBI_Handle_t *handle,AM_VBI_XDS_Para_t *para)
 	return AM_SUCCESS;
 	
 }
+
+
+vbi_bool AM_VBI_CC_set_type(AM_VBI_Handle_t handle,VBI_CC_TYPE cc_type)
+{
+	AM_DEBUG("NTSC--------------------  ******************AM_VBI_CC_set_type ===%d\n",cc_type);
+	AM_VBI_Parser_t *parser = (AM_VBI_Parser_t*)handle;
+	
+	if(cc_type < 1 || cc_type >8)
+		return AM_FAILURE;
+	else
+		parser->page_no = cc_type;
+		return AM_SUCCESS;
+}
+
+vbi_bool AM_VBI_CC_set_status(AM_VBI_Handle_t handle,vbi_bool flag)
+{
+	AM_DEBUG("NTSC--------------------  ******************AM_VBI_CC_set_status ===%d\n");
+	AM_VBI_Parser_t *parser = (AM_VBI_Parser_t*)handle;
+	if(flag == AM_TRUE)
+		parser->cc_status = AM_TRUE;
+	else
+	if(flag == AM_FAILURE)
+		parser->cc_status = AM_FAILURE;
+	return AM_SUCCESS;
+	
+}
+

@@ -183,7 +183,7 @@ static AM_ErrorCode_t vbi_set_buf_size(AM_VBI_Device_t *dev, AM_VBI_Filter_t *fi
 {
 	int fd = (int)filter->drv_data;
 	int ret;
-	AM_DEBUG("vbi_set_buf_size fd =%d\n",fd);
+	AM_DEBUG("vbi_set_buf_size fd =%d size = %d\n",fd,size);
 	
 	
 	
@@ -196,7 +196,7 @@ static AM_ErrorCode_t vbi_set_buf_size(AM_VBI_Device_t *dev, AM_VBI_Filter_t *fi
 	//}
 	//**************************temp****************************///
 	
-	ret = ioctl(fd, VBI_IOC_S_BUF_SIZE, 20000);
+	ret = ioctl(fd, VBI_IOC_S_BUF_SIZE, size);
     if(ret==-1)
 	{
 		AM_DEBUG( "set buffer size failed (%s)", strerror(errno));
