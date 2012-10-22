@@ -2434,6 +2434,8 @@ vbi_format_vt_page(vbi_decoder *vbi,
 
 	printv("\nFormatting page %03x/%04x pg=%p lev=%d rows=%d nav=%d\n",
 	       vtp->pgno, vtp->subno, pg, max_level, display_rows, navigation);
+	       
+	memcpy(vtp->data.lop.raw[0]+32, vbi->vt.header+32, 8);
 
 	display_rows = SATURATE(display_rows, 1, ROWS);
 

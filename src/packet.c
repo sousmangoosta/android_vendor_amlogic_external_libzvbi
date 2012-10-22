@@ -42,6 +42,12 @@
 #include "vps.h"
 #include "vbi.h"
 #include "cache-priv.h"
+#include <android/log.h>
+
+
+#define LOG_TAG    "ZVBI"
+#define LOGI(...)  __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
+
 
 #ifndef FPC
 #  define FPC 0
@@ -1481,6 +1487,8 @@ same_clock(uint8_t *cur, uint8_t *ref)
 {
 	int i;
 
+	cur += 32;
+	ref += 32;
 	for (i = 32; i < 40; cur++, ref++, i++)
 	       	if (*cur != *ref
 		    && (vbi_unpar8 (*cur) | vbi_unpar8 (*ref)) >= 0)
