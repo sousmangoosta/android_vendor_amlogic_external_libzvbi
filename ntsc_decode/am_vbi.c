@@ -13,7 +13,7 @@
 #include "sliced_vbi.h"
 #include "am_vbi.h"
 #include "vbi_dmx.h"
-#include "am_xds.h"
+
 /********************define variable***************************/
 
 
@@ -394,6 +394,47 @@ vbi_bool AM_VBI_CC_Create(AM_VBI_Handle_t *handle, AM_VBI_CC_Para_t *para)
 
 	return AM_SUCCESS;
 }
+
+
+
+
+
+/********************************************************/
+AM_ErrorCode_t AM_VBI_CC_Stop(AM_VBI_Handle_t handle)
+{
+	AM_DEBUG("NTSC--------------------  ******************AM_VBI_CC_Stop \n");
+	AM_VBI_Parser_t *parser = (AM_VBI_Parser_t*)handle;
+	vbi_bool ret = AM_SUCCESS;
+
+	pthread_t th;
+	vbi_bool wait = AM_FALSE;
+
+	if(!parser)
+	{
+		AM_DEBUG("NTSC--------------------  ******************AM_CC_ERR_INVALID_HANDLE \n");
+		return AM_CC_ERR_INVALID_HANDLE;
+	}
+
+	pthread_mutex_lock(&parser->lock);
+
+	if(parser->running)
+	{
+		parser->running = AM_FALSE;
+		wait = AM_TRUE;
+		th = parser->thread;
+	}
+
+	pthread_mutex_unlock(&parser->lock);
+	pthread_cond_signal(&parser->cond);
+
+	if(wait)
+	{
+		pthread_join(th, NULL);
+	}
+
+	return AM_SUCCESS;
+}
+
 
 void* AM_VBI_CC_GetUserData(AM_VBI_Handle_t handle)
 {
