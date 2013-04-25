@@ -49,4 +49,8 @@ typedef enum {
 
 
 
+#ifdef __cplusplus
+}
+#endif
+
 #endif

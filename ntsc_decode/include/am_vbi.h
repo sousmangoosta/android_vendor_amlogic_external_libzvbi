@@ -23,7 +23,8 @@
 #include "tables.h"
 #include "vbi.h"
 #include <android/log.h>    
-#include <am_xds.h>   
+#include <am_xds.h>    
+#include "vbi_dmx.h"
 #ifdef __cplusplus
 extern "C"
 {
@@ -95,7 +96,9 @@ typedef enum {
 
 extern vbi_bool AM_VBI_CC_Create(AM_VBI_Handle_t *handle, AM_VBI_CC_Para_t *para);
 
-extern  vbi_bool AM_VBI_CC_Start(AM_VBI_Handle_t handle);
+extern  AM_ErrorCode_t AM_VBI_CC_Start(AM_VBI_Handle_t handle);
+
+extern  AM_ErrorCode_t AM_VBI_CC_Stop(AM_VBI_Handle_t handle);
 
 extern vbi_bool
 decode_vbi		(int dev_no, int fid, const uint8_t *data, int len, void *user_data);
