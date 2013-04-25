@@ -41,6 +41,11 @@
 #include "wstfont2.xbm"
 #include "ccfont2.xbm"
 
+#include <android/log.h>
+#define LOG_TAG    "ZVBI"
+#define LOGI(...)  __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
+#define LOGE(...)  __android_log_print(ANDROID_LOG_ERROR,LOG_TAG,__VA_ARGS__)
+
 /* Teletext character cell dimensions - hardcoded (DRCS) */
 
 #define TCW 12
@@ -513,7 +518,7 @@ vbi_draw_cc_page_region(vbi_page *pg,
         } pen;
 	int count, row_adv;
 	vbi_char *ac;
-        int canvas_type;
+        int canvas_type, fg_opacity, bg_opacity;
 
 	if (fmt == VBI_PIXFMT_RGBA32_LE) {
                 canvas_type = 4;
@@ -548,11 +553,27 @@ vbi_draw_cc_page_region(vbi_page *pg,
 
 		for (count = width; count > 0; count--, ac++) {
                         if (canvas_type == 1) {
-			        pen.pal8[0] = ac->background;
-			        pen.pal8[1] = ac->foreground;
+                            pen.pal8[0] = ac->background;
+                            pen.pal8[1] = ac->foreground;
                         } else {
-			        pen.rgba[0] = pg->color_map[ac->background];
-			        pen.rgba[1] = pg->color_map[ac->foreground];
+                            bg_opacity = ac->opacity&0x0f;
+                            fg_opacity = (ac->opacity&0Xf0) >> 4;
+
+                            if (bg_opacity == VBI_TRANSPARENT_SPACE){
+                                pen.rgba[0] = 0;
+                            }else if (bg_opacity == VBI_SEMI_TRANSPARENT){
+                                pen.rgba[0] = pg->color_map[ac->background] & 0x80000000;
+                            }else{ 
+                                pen.rgba[0] = pg->color_map[ac->background];
+                            }
+
+                            if (fg_opacity == VBI_TRANSPARENT_SPACE){
+                                pen.rgba[1] = 0;
+                            }else if (fg_opacity == VBI_SEMI_TRANSPARENT){
+                                pen.rgba[1] = pg->color_map[ac->foreground] & 0x80000000;
+                            }else{ 
+                                pen.rgba[1] = pg->color_map[ac->foreground];
+                            }
                         }
 
 			draw_char (canvas_type,

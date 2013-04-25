@@ -33,6 +33,13 @@
 
 #include "libzvbi.h"
 #include "dtvcc.h"
+#include <android/log.h>
+
+#define elements(array) (sizeof(array) / sizeof(array[0]))
+
+#define LOG_TAG    "ZVBI"
+#define LOGI(...)  __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
+#define LOGE(...)  __android_log_print(ANDROID_LOG_ERROR,LOG_TAG,__VA_ARGS__)
 
 #if __GNUC__ < 3
 #  define likely(expr) (expr)
@@ -2163,6 +2170,57 @@ dtvcc_g2 [96] = {
 	0x250C  /* 0x107F Box drawings down and right */
 };
 
+static vbi_rgba
+dtvcc_color_map[8] = {
+	VBI_RGBA(0x00, 0x00, 0x00), VBI_RGBA(0xFF, 0x00, 0x00),
+	VBI_RGBA(0x00, 0xFF, 0x00), VBI_RGBA(0xFF, 0xFF, 0x00),	
+	VBI_RGBA(0x00, 0x00, 0xFF), VBI_RGBA(0xFF, 0x00, 0xFF),
+	VBI_RGBA(0x00, 0xFF, 0xFF), VBI_RGBA(0xFF, 0xFF, 0xFF)
+};
+
+
+static void
+dtvcc_set_page_color_map(vbi_decoder *vbi, vbi_page *pg)
+{
+	vbi_transp_colormap(vbi, pg->color_map,	dtvcc_color_map, 8);
+}
+
+static vbi_color 
+dtvcc_map_color(dtvcc_color c)
+{
+	vbi_color ret = VBI_BLACK;
+	
+	c &= 0x2A;
+	switch(c){
+		case 0:
+			ret = VBI_BLACK;
+			break;
+		case 0x20:
+			ret = VBI_RED;
+			break;
+		case 0x08:
+			ret = VBI_GREEN;
+			break;
+		case 0x28:
+			ret = VBI_YELLOW;
+			break;
+		case 0x02:
+			ret = VBI_BLUE;
+			break;
+		case 0x22:
+			ret = VBI_MAGENTA;
+			break;
+		case 0x0A:
+			ret = VBI_CYAN;
+			break;
+		case 0x2A:
+			ret = VBI_WHITE;
+			break;
+	}
+
+	return ret;
+}
+
 static unsigned int
 dtvcc_unicode			(unsigned int		c)
 {
@@ -2188,6 +2246,23 @@ dtvcc_unicode			(unsigned int		c)
 	}
 
 	return 0;
+}
+
+static void
+dtvcc_render(struct dtvcc_decoder *	dc, struct dtvcc_service *	ds)
+{
+	vbi_event event;
+	struct tvcc_decoder *td = PARENT(dc, struct tvcc_decoder, dtvcc);
+
+	event.type = VBI_EVENT_CAPTION;
+	event.ev.caption.pgno = ds - dc->service + 1 + 8/*after 8 cc channels*/;
+
+	/* Permits calling tvcc_fetch_page from handler */
+	pthread_mutex_unlock(&td->mutex);
+
+	vbi_send_event(td->vbi, &event);
+
+	pthread_mutex_lock(&td->mutex);
 }
 
 static void
@@ -2252,7 +2327,7 @@ dtvcc_stream_event		(struct dtvcc_decoder *	dc,
 	/* Note we only stream windows with scroll direction
 	   upwards. */
 	if (0 != (dw->streamed & (1 << row))
-	    || !cc_timestamp_isset (&dw->timestamp_c0))
+	   /* || !cc_timestamp_isset (&dw->timestamp_c0)*/)
 		return;
 
 	dw->streamed |= 1 << row;
@@ -2266,6 +2341,9 @@ dtvcc_stream_event		(struct dtvcc_decoder *	dc,
 	if (column >= dw->column_count)
 		return;
 
+
+	dtvcc_render(dc, ds);
+	
 	/* TO DO. */
 	CLEAR (ac);
 	ac.foreground = VBI_WHITE;
@@ -2350,6 +2428,8 @@ dtvcc_put_char			(struct dtvcc_decoder *	dc,
 
 	dw->curr_row = row;
 	dw->curr_column = column;
+
+	dtvcc_render(dc, ds);
 
 	return TRUE;
 }
@@ -3348,6 +3428,152 @@ dtvcc_init		(struct dtvcc_decoder *	dc)
 	cc_timestamp_reset (&dc->timestamp);
 }
 
+static void dtvcc_window_to_page(vbi_decoder *vbi, struct dtvcc_window *dw, struct vbi_page *pg)
+{
+	int i, j, c;
+	vbi_char ac;
+	vbi_opacity fg_opacity, bg_opacity;
+	
+	static const vbi_opacity vbi_opacity_map[]={
+		VBI_OPAQUE,
+		VBI_OPAQUE,
+		VBI_SEMI_TRANSPARENT,
+		VBI_TRANSPARENT_SPACE
+	};
+	
+	memset(pg, 0, sizeof(struct vbi_page));
+#if 1
+	pg->rows = dw->row_count;
+	pg->columns = dw->column_count;
+	
+	dtvcc_set_page_color_map(vbi, pg);
+	
+	for (i=0; i<pg->rows; i++)
+	{
+		for (j=0; j<pg->columns; j++)
+		{
+			memset(&ac, 0, sizeof(ac));
+			/*use the curr_pen to draw all the text, actually this isn't reasonable*/
+			if (dw->curr_pen.style.fg_opacity >= N_ELEMENTS(vbi_opacity_map)){
+				fg_opacity = VBI_OPAQUE;
+			}else{
+				fg_opacity = vbi_opacity_map[dw->curr_pen.style.fg_opacity];
+			}
+
+			if (dw->curr_pen.style.bg_opacity >= N_ELEMENTS(vbi_opacity_map)){
+				bg_opacity = VBI_OPAQUE;
+			}else{
+				bg_opacity = vbi_opacity_map[dw->curr_pen.style.bg_opacity];
+			}
+			
+			ac.opacity = (fg_opacity<<4) | bg_opacity;
+			ac.foreground = dtvcc_map_color(dw->curr_pen.style.fg_color);
+			ac.background = dtvcc_map_color(dw->curr_pen.style.bg_color);
+			
+			c = dw->buffer[i][j];
+			if (0 == c) {
+				ac.unicode = 0x20;
+				ac.opacity = VBI_TRANSPARENT_SPACE;
+			} else {
+				ac.unicode = dtvcc_unicode (c);
+				if (0 == ac.unicode) {
+					ac.unicode = 0x20;
+				}
+			}
+
+			pg->text[i*pg->columns + j] = ac;
+		}
+	}
+#else
+	pg->rows = 15;
+	pg->columns = 42;
+	dtvcc_set_page_color_map(vbi, pg);
+	for (i=0; i<pg->rows; i++)
+	{
+		for (j=0; j<pg->columns; j++)
+		{
+			memset(&ac, 0, sizeof(ac));
+			ac.opacity = VBI_OPAQUE;
+			ac.foreground = VBI_WHITE;
+			ac.background = VBI_BLACK;
+			if (j == 0)
+				c = '0' + (i%10);
+			else
+				c = '0' + (j%10);
+			ac.unicode = dtvcc_unicode (c);
+			LOGI("TEXT(%x): %c", ac.unicode, ac.unicode);
+			pg->text[i*pg->columns + j] = ac;
+		}
+	}
+#endif
+	pg->screen_color = 0;
+	pg->screen_opacity = VBI_OPAQUE;
+	//pg->font[0] = vbi_font_descriptors; /* English */
+	//pg->font[1] = vbi_font_descriptors;
+}
+
+static int dtvcc_compare_window_priority(const void *window1, const void *window2)
+{
+	struct dtvcc_window *w1 = (struct dtvcc_window*)window1;
+	struct dtvcc_window *w2 = (struct dtvcc_window*)window2;
+
+	return (w1->priority - w2->priority);
+}
+
+static void dtvcc_get_visible_windows(struct dtvcc_service *ds, int *cnt, struct dtvcc_window **windows)
+{
+	int i, j = 0;
+
+	for (i=0; i<N_ELEMENTS(ds->window); i++){
+		if (ds->window[i].visible && j < *cnt){
+			windows[j++] = &ds->window[i];
+		}
+	}
+
+	qsort(windows, j, sizeof(windows[0]), dtvcc_compare_window_priority);
+
+	*cnt = j;
+}
+
+void tvcc_fetch_page(struct tvcc_decoder *td, int pgno, int *sub_cnt, struct vbi_page *sub_pages)
+{
+	int sub_pg = 0;
+	
+	if (pgno < 1 || pgno > 14 || *sub_cnt <= 0)
+		goto fetch_done;
+
+	if (pgno <= 8){
+		if (vbi_fetch_cc_page(td->vbi, &sub_pages[0], pgno, 1)){
+			sub_pg = 1;
+			sub_pages[0].pgno = pgno;
+		}
+	}else{
+		int i;
+		struct dtvcc_service *ds = &td->dtvcc.service[pgno - 1 - 8];
+		struct dtvcc_window *dw;
+		struct dtvcc_window *visible_windows[8];
+		
+		sub_pg = *sub_cnt;
+		if (sub_pg > 8)
+			sub_pg = 8;
+		
+		dtvcc_get_visible_windows(ds, &sub_pg, visible_windows);
+		
+		for (i=0; i<sub_pg; i++){
+			dw = visible_windows[i];
+			
+			dtvcc_window_to_page(td->vbi, dw, &sub_pages[i]);	
+			
+			sub_pages[i].vbi = td->vbi;
+			sub_pages[i].pgno = pgno;
+			sub_pages[i].subno = dw - ds->window;
+		}
+	}
+	
+fetch_done:
+	*sub_cnt = sub_pg;
+}
+
 /* ATSC A/53 Part 4:2007 Closed Caption Data decoder */
 
 /* Note pts may be < 0 if no PTS was received. */
@@ -3363,13 +3589,16 @@ tvcc_decode_data			(struct tvcc_decoder *td,
 	vbi_bool dtvcc;
 	struct timeval now;
 
-	process_cc_data_flag = buf[9] & 0x40;
+	if (buf[0] != 0x03)
+		return;
+	process_cc_data_flag = buf[1] & 0x40;
 	if (!process_cc_data_flag)
 		return;
 
-	cc_count = buf[9] & 0x1F;
+	cc_count = buf[1] & 0x1F;
 	dtvcc = FALSE;
 
+	pthread_mutex_lock(&td->mutex);
 	for (i = 0; i < cc_count; ++i) {
 		unsigned int b0;
 		unsigned int cc_valid;
@@ -3378,11 +3607,11 @@ tvcc_decode_data			(struct tvcc_decoder *td,
 		unsigned int cc_data_2;
 		unsigned int j;
 
-		b0 = buf[11 + i * 3];
+		b0 = buf[3 + i * 3];
 		cc_valid = b0 & 4;
 		cc_type = (enum cc_type)(b0 & 3);
-		cc_data_1 = buf[12 + i * 3];
-		cc_data_2 = buf[13 + i * 3];
+		cc_data_1 = buf[4 + i * 3];
+		cc_data_2 = buf[5 + i * 3];
 
 		switch (cc_type) {
 		case NTSC_F1:
@@ -3396,11 +3625,12 @@ tvcc_decode_data			(struct tvcc_decoder *td,
 				/* Illegal, invalid or filler. */
 				break;
 			}
-
+#if 0
 			cc_feed (&td->cc, &buf[12 + i * 3],
 				 /* line */ (NTSC_F1 == cc_type) ? 21 : 284,
 				 &now, pts);
-
+#endif
+			vbi_decode_caption(td->vbi, (NTSC_F1 == cc_type) ? 21 : 284, &buf[4 + i * 3]);
 			break;
 
 		case DTVCC_DATA:
@@ -3443,12 +3673,24 @@ tvcc_decode_data			(struct tvcc_decoder *td,
 			break;
 		}
 	}
+	pthread_mutex_unlock(&td->mutex);
 }
 
 void tvcc_init(struct tvcc_decoder *td)
 {
+	pthread_mutex_init(&td->mutex, NULL);
 	dtvcc_init(&td->dtvcc);
 	cc_init(&td->cc);
+	td->vbi = vbi_decoder_new();
+}
+
+void tvcc_destroy(struct tvcc_decoder *td)
+{
+	if (td){
+		vbi_decoder_delete(td->vbi);
+		td->vbi = NULL;
+		pthread_mutex_destroy(&td->mutex);
+	}
 }
 
 void tvcc_reset(struct tvcc_decoder *td)

@@ -399,7 +399,7 @@ struct dtvcc_service {
 };
 
 struct dtvcc_decoder {
-	struct dtvcc_service		service[2];
+	struct dtvcc_service		service[6];
 
 	/* Packet Layer. */
 
@@ -468,9 +468,10 @@ enum caption_format {
 };
 
 struct tvcc_decoder {
-	struct cc_decoder		cc;
-
-	struct dtvcc_decoder		dtvcc;
+	pthread_mutex_t mutex;
+	struct vbi_decoder *vbi;
+	struct cc_decoder cc;
+	struct dtvcc_decoder dtvcc;
 };
 
 extern void     tvcc_init(struct tvcc_decoder *td);
@@ -478,6 +479,10 @@ extern void     tvcc_init(struct tvcc_decoder *td);
 extern void     tvcc_decode_data(struct tvcc_decoder *td, int64_t pts, const uint8_t *buf, unsigned int n_bytes);
 
 extern void     tvcc_reset(struct tvcc_decoder *td);
+
+extern void     tvcc_destroy(struct tvcc_decoder *td);
+
+extern void     tvcc_fetch_page(struct tvcc_decoder *td, int pgno, int *sub_cnt, struct vbi_page *sub_pages);
 
 static void     dtvcc_init(struct dtvcc_decoder * dc);
 
