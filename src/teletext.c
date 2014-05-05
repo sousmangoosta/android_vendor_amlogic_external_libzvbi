@@ -2885,33 +2885,7 @@ vbi_get_next_pgno(vbi_decoder *vbi, int dir, vbi_pgno *pgno, vbi_pgno *subno)
 	pg  = *pgno;
 	sub = *subno;
 
-	vtp = _vbi_cache_find_next_page (vbi->ca, dir, pg, sub);
-
-	if (!vtp) {
-		int start, no;
-		
-		start = no = vbi_bcd2dec(pg);
-
-		if(dir > 0){
-			do{
-				no++;
-				if(no > 899)
-					no = 0;
-				vtp = _vbi_cache_find_page(vbi->ca, dir, vbi_dec2bcd(no));
-				if(vtp)
-					break;
-			}while(no != start);
-		}else if(dir < 0){
-			do {
-				no--;
-				if(no < 100)
-					no = 899;
-				vtp = _vbi_cache_find_page(vbi->ca, dir, vbi_dec2bcd(no));
-				if(vtp)
-					break;
-			}while(no != start);
-		}
-	}
+	vtp = _vbi_cache_find_next_page_2 (vbi->ca, dir, pg, sub);
 
 	if(vtp) {
 		*pgno  = vtp->pgno;
@@ -2922,6 +2896,36 @@ vbi_get_next_pgno(vbi_decoder *vbi, int dir, vbi_pgno *pgno, vbi_pgno *subno)
 
 	return FALSE;
 }
+
+vbi_bool
+vbi_get_next_sub_pgno(vbi_decoder *vbi, int dir, vbi_pgno *pgno, vbi_pgno *subno)
+{
+	cache_page *vtp;
+	vbi_pgno pg, sub;
+
+	assert(pgno && subno && (pgno>0x899 || pgno < 0x100));
+
+	pg  = *pgno;
+	sub = *subno;
+
+	vtp = _vbi_cache_find_next_page (vbi->ca, dir, pg, sub);
+
+	if(vtp) {
+		*pgno  = vtp->pgno;
+		*subno = vtp->subno;
+		cache_page_unref (vtp);
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
+vbi_bool
+vbi_get_sub_info(vbi_decoder *vbi, vbi_pgno pgno, int *subs, int *len)
+{
+	return _vbi_cache_get_sub_info(vbi->ca, pgno, subs, len);
+}
+
 
 /*
 Local variables:

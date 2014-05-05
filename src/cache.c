@@ -1376,6 +1376,75 @@ _vbi_cache_find_next_page       (vbi_cache * ca,
 }
 
 cache_page *
+_vbi_cache_find_next_page_2       (vbi_cache * ca,
+				 int dir,
+				 vbi_subno pgno,
+				 vbi_subno subno)
+{
+	struct node *hash_list;
+	cache_page *cp, *cp1, *ret = NULL;
+	int i;
+
+	assert (NULL != ca);
+
+	if (pgno < 0x100 || pgno > 0x8FF || 0xFF == (pgno & 0xFF)) {
+		warning (&ca->log,
+			 "Invalid pgno 0x%x.", pgno);
+		return NULL;
+	}
+
+	for(i = 0; i < HASH_SIZE; i++){
+		hash_list = ca->hash + hash (i);
+		FOR_ALL_NODES (cp, cp1, hash_list, hash_node) {
+			if(dir > 0){
+				if((cp->pgno > pgno) && (!ret || (ret->pgno > cp->pgno)))
+					ret = cp;
+			}else if(dir < 0){
+				if((cp->pgno < pgno) && (!ret || (ret->pgno < cp->pgno)))
+					ret = cp;
+			}
+		}
+	}
+
+	if(ret){
+		return cache_page_ref(ret);
+	}
+
+	return NULL;
+}
+
+vbi_bool
+_vbi_cache_get_sub_info(vbi_cache *ca, vbi_subno pgno, int *subs, int *len)
+{
+	struct node *hash_list;
+	cache_page *cp, *cp1;
+	int left = *len;
+	int cnt = 0;
+
+	assert (NULL != ca);
+	assert (left >= 0);
+
+	if (pgno < 0x100 || pgno > 0x8FF || 0xFF == (pgno & 0xFF)) {
+		warning (&ca->log,
+			 "Invalid pgno 0x%x.", pgno);
+		return FALSE;
+	}
+
+	hash_list = ca->hash + hash (pgno);
+
+	FOR_ALL_NODES (cp, cp1, hash_list, hash_node) {
+		if((cp->pgno == pgno) && (left > 0)){
+			subs[cnt++] = cp->subno;
+			left--;
+		}
+	}
+
+	*len = cnt;
+
+	return TRUE;
+}
+
+cache_page *
 _vbi_cache_find_page            (vbi_cache * ca,
 				 int dir,
 				 vbi_subno pgno)
