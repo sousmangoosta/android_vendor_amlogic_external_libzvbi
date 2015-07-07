@@ -10,10 +10,13 @@ LOCAL_SRC_FILES := src/bit_slicer.c src/cache.c src/caption.c src/conv.c src/dvb
 	src/tables.c src/trigger.c src/vbi.c src/vps.c src/wss.c src/xds_demux.c src/decoder.c src/dtvcc.c 
 
 LOCAL_CFLAGS+=-D_REENTRANT -D_GNU_SOURCE -DENABLE_DVB=1 -DENABLE_V4L=1 -DENABLE_V4L2=1 -DHAVE_ICONV=1 -DPACKAGE=\"zvbi\" -DVERSION=\"0.2.33\" -DANDROID
+ifeq ($(ANDROID_BUILD_TYPE), 64)
+LOCAL_CFLAGS+=-DHAVE_S64_U64
+endif
+
 LOCAL_ARM_MODE := arm
-LOCAL_C_INCLUDES := external/icu4c/common\
-                    external/icu/icu4c/source/common
-                     
+LOCAL_C_INCLUDES := external/icu4c/common
+LOCAL_C_INCLUDES += external/icu/icu4c/source/common
 
 LOCAL_SHARED_LIBRARIES += libicuuc liblog
 

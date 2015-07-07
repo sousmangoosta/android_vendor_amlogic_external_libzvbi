@@ -141,7 +141,7 @@ static AM_ErrorCode_t vbi_alloc_filter(AM_VBI_Device_t *dev, AM_VBI_Filter_t *fi
 	
 */
 //***************************************************
-	filter->drv_data = (void*)fd;
+	filter->drv_data = (void*)(long)fd;
 	
 	return AM_SUCCESS;
 }
@@ -149,7 +149,7 @@ static AM_ErrorCode_t vbi_alloc_filter(AM_VBI_Device_t *dev, AM_VBI_Filter_t *fi
 static AM_ErrorCode_t vbi_free_filter(AM_VBI_Device_t *dev, AM_VBI_Filter_t *filter)
 {
 	VbiDmx_t *dmx = (VbiDmx_t*)dev->drv_data;
-	int fd = (int)filter->drv_data;
+	int fd = (long)filter->drv_data;
 
 	close(fd);
 	dmx->fd[filter->id] = -1;
@@ -162,7 +162,7 @@ static AM_ErrorCode_t vbi_free_filter(AM_VBI_Device_t *dev, AM_VBI_Filter_t *fil
 static AM_ErrorCode_t vbi_enable_filter(AM_VBI_Device_t *dev, AM_VBI_Filter_t *filter, vbi_bool enable)
 {
 	AM_DEBUG("**************************vbi_enable_filter*******************\n");
-	int fd = (int)filter->drv_data;
+	int fd = (long)filter->drv_data;
 	int ret;
 	AM_DEBUG("***********vbi_enable_filter***************enable = %d \n",enable);
 	if(enable)
@@ -181,7 +181,7 @@ static AM_ErrorCode_t vbi_enable_filter(AM_VBI_Device_t *dev, AM_VBI_Filter_t *f
 
 static AM_ErrorCode_t vbi_set_buf_size(AM_VBI_Device_t *dev, AM_VBI_Filter_t *filter, int size)
 {
-	int fd = (int)filter->drv_data;
+	int fd = (long)filter->drv_data;
 	int ret;
 	AM_DEBUG("vbi_set_buf_size fd =%d size = %d\n",fd,size);
 	
@@ -259,7 +259,7 @@ static AM_ErrorCode_t vbi_poll(AM_VBI_Device_t *dev, AM_VBI_FilterMask_t *mask, 
 
 static AM_ErrorCode_t vbi_read(AM_VBI_Device_t *dev, AM_VBI_Filter_t *filter, uint8_t *buf, int *size)
 {
-	int fd = (int)filter->drv_data;
+	int fd = (long)filter->drv_data;
 	int len = *size;
 	int ret;
 	struct pollfd pfd;
