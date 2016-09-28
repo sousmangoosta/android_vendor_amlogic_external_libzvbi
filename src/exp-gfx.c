@@ -303,7 +303,7 @@ draw_char(int canvas_type, uint8_t *canvas, int rowstride,
 
 		if (!(underline & 1)) {
 #ifdef __GNUC__
-#if #cpu (i386)
+#if defined (i386)
 			bits = (*((uint16_t *) src) >> shift);
 #else
                         /* unaligned/little endian */

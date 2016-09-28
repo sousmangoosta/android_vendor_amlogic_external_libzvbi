@@ -336,8 +336,10 @@ parse_eacem(vbi_trigger *t, char *s1, unsigned int nuid, double now)
 		t->link.expires = t->fire + active / 25.0;
 		/* EACEM eqv PAL/SECAM land, 25 fps */
 
+	/*
 	if (!t->link.url)
 		return NULL;
+	*/
 
 	if (strncmp((char *) t->link.url, "http://", 7) == 0)
 		t->link.type = VBI_LINK_HTTP;
@@ -347,7 +349,7 @@ parse_eacem(vbi_trigger *t, char *s1, unsigned int nuid, double now)
 		t->link.type = VBI_LINK_TELEWEB;
 	else if (strncmp((char *) t->link.url, "dummy", 5) == 0) {
 		t->link.pgno = parse_dec((char *) t->link.url + 5, 2);
-		if (!t->link.name || t->link.pgno < 0 || t->link.url[7])
+		if (/*!t->link.name || */t->link.pgno < 0 || t->link.url[7])
 			return NULL;
 		t->link.type = VBI_LINK_MESSAGE;
 	} else if (strncmp((char *) t->link.url, "ttx://", 6) == 0) {
@@ -546,10 +548,10 @@ parse_atvef(vbi_trigger *t, char *s1, double now)
 		else
 			return NULL;
 	}
-
+	/*
 	if (!t->link.url)
 		return NULL;
-
+	*/
 	if (strncmp((char *) t->link.url, "http://", 7) == 0)
 		t->link.type = VBI_LINK_HTTP;
 	else if (strncmp((char *) t->link.url, "lid://", 6) == 0)

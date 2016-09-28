@@ -53,10 +53,10 @@
 
 #undef __i386__
 #undef __i686__
-#if #cpu (i386)
+#if defined (i386)
 #  define __i386__ 1
 #endif
-#if #cpu (i686)
+#if defined (i686)
 #  define __i686__ 1
 #endif
 
