@@ -62,6 +62,10 @@ do {									\
 #define EXT_COLUMNS		41
 #define LAST_ROW		((ROWS - 1) * EXT_COLUMNS)
 
+extern vbi_bool
+_vbi_cache_get_sub_info(vbi_cache *ca, vbi_subno pgno, int *subs, int *len);
+
+
 /*
  *  FLOF navigation
  */

@@ -37,6 +37,7 @@ vbi_pgno		pgno = -1;
 
 //AM_VBI_Parser_t *parser = NULL;
 
+#if 0
 static void
 reset				(AM_VBI_Parser_t *parser)
 {
@@ -52,7 +53,7 @@ reset				(AM_VBI_Parser_t *parser)
 
 	vbi_unref_page (&page);
 }
-
+#endif
 /**********************************************************/
 
 

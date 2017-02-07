@@ -95,6 +95,13 @@ do {									\
 #  define PRIx64 "llx"
 #endif
 
+extern void
+vbi_transp_colormap(vbi_decoder *vbi, vbi_rgba *d, vbi_rgba *s, int entries);
+extern void
+vbi_send_event(vbi_decoder *vbi, vbi_event *ev);
+extern void
+vbi_decode_caption(vbi_decoder *vbi, int line, uint8_t *buf);
+
 /* EIA 608-B decoder. */
 
 static int
