@@ -502,6 +502,8 @@ xds_decoder(vbi_decoder *vbi, int _class, int type,
 		break;
 
 	case XDS_CHANNEL:
+		n->ts_id = -1;
+
 		switch (type) {
 		case 1:		/* network name */
 			if (xds_strfu(n->name, buffer, length)) {
@@ -552,6 +554,20 @@ xds_decoder(vbi_decoder *vbi, int _class, int type,
 			n->tape_delay =
 				(buffer[1] & 31) * 60 + (buffer[0] & 63);
 
+			break;
+
+		case 4:         /* Transmission Signal ID */
+			if (length < 4)
+				return;
+
+			n->ts_id =
+				 ((buffer[3] & 15) << 0)
+				|((buffer[2] & 15) << 4)
+				|((buffer[1] & 15) << 8)
+				|((buffer[0] & 15) << 12);
+
+			vbi->network.type = VBI_EVENT_NETWORK;
+			caption_send_event(vbi, &vbi->network);
 			break;
 
 		default:

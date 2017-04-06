@@ -128,6 +128,9 @@ typedef struct {
 
 	/** Private. */
 	int			cycle;
+
+	/** Transmission Signal ID */
+	int                     ts_id;
 } vbi_network;
 
 /*
