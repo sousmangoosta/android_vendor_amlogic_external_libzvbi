@@ -275,6 +275,7 @@ typedef struct {
 
 	
 	int			cycle;
+	int                     ts_id;
 } vbi_network;
 
 /*
