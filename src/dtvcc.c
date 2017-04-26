@@ -101,6 +101,8 @@ extern void
 vbi_send_event(vbi_decoder *vbi, vbi_event *ev);
 extern void
 vbi_decode_caption(vbi_decoder *vbi, int line, uint8_t *buf);
+static void
+dtvcc_get_visible_windows(struct dtvcc_service *ds, int *cnt, struct dtvcc_window **windows);
 
 /* EIA 608-B decoder. */
 
@@ -2260,6 +2262,52 @@ dtvcc_render(struct dtvcc_decoder *	dc, struct dtvcc_service *	ds)
 {
 	vbi_event event;
 	struct tvcc_decoder *td = PARENT(dc, struct tvcc_decoder, dtvcc);
+	struct dtvcc_window *win[8];
+	int i, cnt;
+
+	cnt = 8;
+	dtvcc_get_visible_windows(ds, &cnt, win);
+	if (!cnt)
+		return;
+
+	if (cnt != ds->old_win_cnt)
+		goto changed;
+
+	for (i = 0; i < cnt; i ++) {
+		struct dtvcc_window *w1 = win[i];
+		struct dtvcc_window *w2 = &ds->old_window[i];
+
+		if (memcmp(w1->buffer, w2->buffer, sizeof(w1->buffer))) {
+			goto changed;
+		}
+
+		if (memcmp(&w1->style, &w2->style, sizeof(w1->style))) {
+			goto changed;
+		}
+
+		if (memcmp(&w1->curr_pen, &w2->curr_pen, sizeof(w1->curr_pen))) {
+			goto changed;
+		}
+
+		if (w1->row_count != w2->row_count) {
+			goto changed;
+		}
+
+		if (w1->column_count != w2->column_count) {
+			goto changed;
+		}
+
+		if (w1->visible != w2->visible) {
+			goto changed;
+		}
+	}
+
+	return;
+changed:
+	for (i = 0; i < cnt; i ++) {
+		ds->old_window[i] = *win[i];
+	}
+	ds->old_win_cnt = cnt;
 
 	event.type = VBI_EVENT_CAPTION;
 	event.ev.caption.pgno = ds - dc->service + 1 + 8/*after 8 cc channels*/;
@@ -3430,6 +3478,8 @@ dtvcc_reset			(struct dtvcc_decoder *	dc)
 void
 dtvcc_init		(struct dtvcc_decoder *	dc)
 {
+	memset(dc, 0, sizeof(struct dtvcc_decoder));
+
 	dtvcc_reset (dc);
 
 	cc_timestamp_reset (&dc->timestamp);
@@ -3647,9 +3697,9 @@ tvcc_decode_data			(struct tvcc_decoder *td,
 				break;
 			} else if (!cc_valid) {
 				/* End of DTVCC packet. */
-				dtvcc_decode_packet (&td->dtvcc,
+				/*dtvcc_decode_packet (&td->dtvcc,
 						     &now, pts);
-				td->dtvcc.packet_size = 0;
+				td->dtvcc.packet_size = 0;*/
 			} else if (j >= 128) {
 				/* Packet buffer overflow. */
 				dtvcc_reset (&td->dtvcc);

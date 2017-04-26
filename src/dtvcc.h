@@ -381,6 +381,8 @@ struct dtvcc_service {
 	/* Interpretation Layer. */
 
 	struct dtvcc_window		window[8];
+	struct dtvcc_window             old_window[8];
+	int                             old_win_cnt;
 
 	struct dtvcc_window *		curr_window;
 
