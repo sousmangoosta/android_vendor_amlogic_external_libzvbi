@@ -2258,7 +2258,7 @@ dtvcc_unicode			(unsigned int		c)
 }
 
 static void
-dtvcc_render(struct dtvcc_decoder *	dc, struct dtvcc_service *	ds)
+dtvcc_event(struct dtvcc_decoder *dc, struct dtvcc_service *ds)
 {
 	vbi_event event;
 	struct tvcc_decoder *td = PARENT(dc, struct tvcc_decoder, dtvcc);
@@ -2318,6 +2318,12 @@ changed:
 	vbi_send_event(td->vbi, &event);
 
 	pthread_mutex_lock(&td->mutex);
+}
+
+static void
+dtvcc_render(struct dtvcc_decoder *dc, struct dtvcc_service *ds)
+{
+	ds->update = 1;
 }
 
 static void
@@ -2680,6 +2686,8 @@ dtvcc_clear_windows		(struct dtvcc_decoder *	dc,
 			dw->curr_row = 0;
 		}
 	}
+
+	dtvcc_render(dc, ds);
 
 	return TRUE;
 }
@@ -3122,19 +3130,24 @@ dtvcc_delete_windows		(struct dtvcc_decoder *	dc,
 				 dtvcc_window_map	window_map)
 {
 	struct dtvcc_window *dw;
+	int i;
 
-	dw = ds->curr_window;
-	if (NULL != dw) {
-		unsigned int window_id;
-		
-		window_id = dtvcc_window_id (ds, dw);
-		if (0 != (window_map & (1 << window_id))) {
+	for (i = 0; i < N_ELEMENTS(ds->window); i ++) {
+		dw = &ds->window[i];
+
+		if (window_map & (1 << i)) {
 			dtvcc_stream_event (dc, ds, dw, dw->curr_row);
-			ds->curr_window = NULL;
+			if (ds->curr_window == dw)
+				ds->curr_window = NULL;
+
+			dw->visible = 0;
+			memset(dw->buffer, 0, sizeof(dw->buffer));
 		}
 	}
 
 	ds->created &= ~window_map;
+
+	dtvcc_render(dc, ds);
 
 	return TRUE;
 }
@@ -3456,6 +3469,28 @@ dtvcc_decode_packet		(struct dtvcc_decoder *	dc,
 
 }
 
+void
+dtvcc_try_decode_packet		(struct dtvcc_decoder *	dc,
+				 const struct timeval *	tv,
+				 int64_t		pts)
+{
+	unsigned int packet_size_code;
+	unsigned int packet_size;
+
+	if (dc->packet_size < 1)
+		return;
+
+	packet_size_code = dc->packet[0] & 0x3F;
+	packet_size = 128;
+	if (packet_size_code > 0)
+		packet_size = packet_size_code * 2;
+
+	if (packet_size <= dc->packet_size) {
+		dtvcc_decode_packet(dc, tv, pts);
+		dc->packet_size = 0;
+	}
+}
+
 static void
 dtvcc_reset_service		(struct dtvcc_service *	ds)
 {
@@ -3697,10 +3732,7 @@ tvcc_decode_data			(struct tvcc_decoder *td,
 				break;
 			} else if (!cc_valid) {
 				/* End of DTVCC packet. */
-				/*dtvcc_decode_packet (&td->dtvcc,
-						     &now, pts);
-				td->dtvcc.packet_size = 0;*/
-			} else if (j >= 128) {
+			} else if (j + 2 > 128) {
 				/* Packet buffer overflow. */
 				dtvcc_reset (&td->dtvcc);
 				td->dtvcc.packet_size = 0;
@@ -3708,6 +3740,8 @@ tvcc_decode_data			(struct tvcc_decoder *td,
 				td->dtvcc.packet[j] = cc_data_1;
 				td->dtvcc.packet[j + 1] = cc_data_2;
 				td->dtvcc.packet_size = j + 2;
+
+				dtvcc_try_decode_packet (&td->dtvcc, &now, pts);
 			}
 			break;
 
@@ -3726,10 +3760,23 @@ tvcc_decode_data			(struct tvcc_decoder *td,
 				td->dtvcc.packet[0] = cc_data_1;
 				td->dtvcc.packet[1] = cc_data_2;
 				td->dtvcc.packet_size = 2;
+
+				dtvcc_try_decode_packet (&td->dtvcc, &now, pts);
 			}
 			break;
 		}
 	}
+
+	for (i = 0; i < N_ELEMENTS(td->dtvcc.service); i ++) {
+		struct dtvcc_service *ds = &td->dtvcc.service[i];
+
+		if (ds->update) {
+			dtvcc_event(&td->dtvcc, ds);
+
+			ds->update = 0;
+		}
+	}
+
 	pthread_mutex_unlock(&td->mutex);
 }
 
