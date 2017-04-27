@@ -2267,8 +2267,6 @@ dtvcc_event(struct dtvcc_decoder *dc, struct dtvcc_service *ds)
 
 	cnt = 8;
 	dtvcc_get_visible_windows(ds, &cnt, win);
-	if (!cnt)
-		return;
 
 	if (cnt != ds->old_win_cnt)
 		goto changed;
