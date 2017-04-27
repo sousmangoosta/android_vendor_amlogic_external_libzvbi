@@ -3147,6 +3147,8 @@ dtvcc_delete_windows		(struct dtvcc_decoder *	dc,
 
 	ds->created &= ~window_map;
 
+	dtvcc_render(dc, ds);
+
 	return TRUE;
 }
 
