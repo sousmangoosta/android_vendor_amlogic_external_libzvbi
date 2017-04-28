@@ -2262,50 +2262,6 @@ dtvcc_event(struct dtvcc_decoder *dc, struct dtvcc_service *ds)
 {
 	vbi_event event;
 	struct tvcc_decoder *td = PARENT(dc, struct tvcc_decoder, dtvcc);
-	struct dtvcc_window *win[8];
-	int i, cnt;
-
-	cnt = 8;
-	dtvcc_get_visible_windows(ds, &cnt, win);
-
-	if (cnt != ds->old_win_cnt)
-		goto changed;
-
-	for (i = 0; i < cnt; i ++) {
-		struct dtvcc_window *w1 = win[i];
-		struct dtvcc_window *w2 = &ds->old_window[i];
-
-		if (memcmp(w1->buffer, w2->buffer, sizeof(w1->buffer))) {
-			goto changed;
-		}
-
-		if (memcmp(&w1->style, &w2->style, sizeof(w1->style))) {
-			goto changed;
-		}
-
-		if (memcmp(&w1->curr_pen, &w2->curr_pen, sizeof(w1->curr_pen))) {
-			goto changed;
-		}
-
-		if (w1->row_count != w2->row_count) {
-			goto changed;
-		}
-
-		if (w1->column_count != w2->column_count) {
-			goto changed;
-		}
-
-		if (w1->visible != w2->visible) {
-			goto changed;
-		}
-	}
-
-	return;
-changed:
-	for (i = 0; i < cnt; i ++) {
-		ds->old_window[i] = *win[i];
-	}
-	ds->old_win_cnt = cnt;
 
 	event.type = VBI_EVENT_CAPTION;
 	event.ev.caption.pgno = ds - dc->service + 1 + 8/*after 8 cc channels*/;
@@ -2488,7 +2444,8 @@ dtvcc_put_char			(struct dtvcc_decoder *	dc,
 	dw->curr_row = row;
 	dw->curr_column = column;
 
-	dtvcc_render(dc, ds);
+	if (dw->visible)
+		dtvcc_render(dc, ds);
 
 	return TRUE;
 }
@@ -2677,6 +2634,9 @@ dtvcc_clear_windows		(struct dtvcc_decoder *	dc,
 
 		dw->streamed = 0;
 
+		if(dw->visible)
+			dtvcc_render(dc, ds);
+
 		/* FIXME CEA 708-C Section 7.1.4 (Form Feed)
 		   and 8.10.5.3 confuse me. */
 		if (0) {
@@ -2684,8 +2644,6 @@ dtvcc_clear_windows		(struct dtvcc_decoder *	dc,
 			dw->curr_row = 0;
 		}
 	}
-
-	dtvcc_render(dc, ds);
 
 	return TRUE;
 }
@@ -2904,6 +2862,8 @@ dtvcc_display_windows		(struct dtvcc_decoder *	dc,
 			}
 		}
 	}
+
+	dtvcc_render(dc, ds);
 
 	return TRUE;
 }
@@ -3138,14 +3098,15 @@ dtvcc_delete_windows		(struct dtvcc_decoder *	dc,
 			if (ds->curr_window == dw)
 				ds->curr_window = NULL;
 
+			if (dw->visible)
+				dtvcc_render(dc, ds);
+
 			dw->visible = 0;
 			memset(dw->buffer, 0, sizeof(dw->buffer));
 		}
 	}
 
 	ds->created &= ~window_map;
-
-	dtvcc_render(dc, ds);
 
 	return TRUE;
 }
