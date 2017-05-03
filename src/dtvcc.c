@@ -3377,7 +3377,7 @@ dtvcc_decode_packet		(struct dtvcc_decoder *	dc,
 		if (i + header_size + block_size > packet_size)
 			goto service_block_incomplete;
 
-		if (service_number <= 2) {
+		if (service_number <= 6) {
 			struct dtvcc_service *ds;
 			unsigned int in;
 
@@ -3392,7 +3392,7 @@ dtvcc_decode_packet		(struct dtvcc_decoder *	dc,
 		i += header_size + block_size;
 	}
 
-	for (i = 0; i < 2; ++i) {
+	for (i = 0; i < 6; ++i) {
 		struct dtvcc_service *ds;
 		struct program *pr;
 		vbi_bool success;
