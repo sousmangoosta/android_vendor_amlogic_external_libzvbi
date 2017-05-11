@@ -3453,17 +3453,24 @@ dtvcc_try_decode_packet		(struct dtvcc_decoder *	dc,
 static void
 dtvcc_reset_service		(struct dtvcc_service *	ds)
 {
+	int i = 0;
 	ds->curr_window = NULL;
 	ds->created = 0;
-
+	for(i=0; i<8; i++)
+	{
+		memset(&ds->window[i], 0, sizeof(struct dtvcc_window));
+		memset(ds->window[i].buffer, 0, sizeof(ds->window[i].buffer));
+	}
 	cc_timestamp_reset (&ds->timestamp);
 }
 
 void
 dtvcc_reset			(struct dtvcc_decoder *	dc)
 {
-	dtvcc_reset_service (&dc->service[0]);
-	dtvcc_reset_service (&dc->service[1]);
+	int i;
+	for(i=0; i<6; i++){
+		dtvcc_reset_service (&dc->service[i]);
+	}
 
 	dc->packet_size = 0;
 	dc->next_sequence_number = -1;
