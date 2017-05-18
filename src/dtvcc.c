@@ -3150,7 +3150,10 @@ dtvcc_command			(struct dtvcc_decoder *	dc,
 		window_id = c & 7;
 		if (0 == (ds->created & (1 << window_id))) {
 			ds->error_line = __LINE__;
-			return FALSE;
+			LOGI("cc cmd:%02x, set window_id:%d, not create?%d",
+				c, window_id, ds->created);
+			return TRUE;
+			//return FALSE;
 		}
 		ds->curr_window = &ds->window[window_id];
 		return TRUE;
