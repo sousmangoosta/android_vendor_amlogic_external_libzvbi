@@ -674,6 +674,8 @@ vbi_draw_vt_page_region(vbi_page *pg,
 		ac = &pg->text[row * pg->columns + column];
 
 		for (count = width; count > 0; count--, ac++) {
+			int transparent;
+
 			if ((ac->conceal & conceal) || (ac->flash & off))
 				unicode = 0x0020;
 			else
@@ -682,6 +684,53 @@ vbi_draw_vt_page_region(vbi_page *pg,
 			if (subtitle && (row == 0))
 				unicode = 0x0020;
 
+			if (!subtitle) {
+				transparent = 0;
+			} else if (subtitle == 1) {
+				if (vbi_is_drcs(unicode) || unicode==0x0020)
+					transparent = 1;
+				else
+					transparent = 0;
+			} else {
+				if (row == 0) {
+					transparent = 1;
+				} else if (vbi_is_drcs(unicode) || unicode==0x0020) {
+					vbi_char *tc;
+					int n, uc;
+					int left, right;
+
+					left = right = 0;
+
+					for (n = count + 1, tc = ac - 1; n <= width; tc --, n ++) {
+						if ((tc->conceal & conceal) || (tc->flash & off))
+							uc = 0x0020;
+						else
+							uc = tc->unicode;
+
+						if(!vbi_is_drcs(uc) && uc!=0x0020) {
+							left = 1;
+							break;
+						}
+					}
+
+					for (n = count - 1, tc = ac + 1; n > 0; tc ++, n --) {
+						if ((tc->conceal & conceal) || (tc->flash & off))
+							uc = 0x0020;
+						else
+							uc = tc->unicode;
+
+						if(!vbi_is_drcs(uc) && uc!=0x0020) {
+							right = 1;
+							break;
+						}
+					}
+
+					transparent = !(left & right);
+				} else {
+					transparent = 0;
+				}
+			}
+
                         if (canvas_type == 1) {
                                 pen.pal8[0] = ac->background;
                                 pen.pal8[1] = ac->foreground;
@@ -689,15 +738,13 @@ vbi_draw_vt_page_region(vbi_page *pg,
                                 pen.rgba[0] = pg->color_map[ac->background];
                                 pen.rgba[1] = pg->color_map[ac->foreground];
 
-                                if(subtitle){
-        	                        if(vbi_is_drcs(unicode) || unicode==0x0020) {
-						pen.rgba[0] &= 0x00FFFFFF;
-                	                	pen.rgba[1] &= 0x00FFFFFF;
-                        	        }else{
-						pen.rgba[0] &= 0x00FFFFFF;
-						//pen.rgba[0] |= 0x80000000;
-					}
-                                }
+				if (transparent) {
+					pen.rgba[0] = 0x00FFFFFF;
+               	                	pen.rgba[1] = 0x00FFFFFF;
+				}
+
+				if (subtitle == 1)
+					pen.rgba[0] = 0x00FFFFFF;
                         }
 
 			switch (ac->size) {
