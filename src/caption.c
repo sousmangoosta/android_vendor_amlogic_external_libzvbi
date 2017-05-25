@@ -331,14 +331,10 @@ xds_decoder(vbi_decoder *vbi, int _class, int type,
 				pi->rating_auth = auth;
 				pi->rating_id = r;
 				pi->rating_dlsv = dlsv;
-			}
-			
-			//***************************************zk
-				//callback	
-				//e.type = VBI_EVENT_PROG_INFO;
-				//e.ev.prog_info = pi;
-				//caption_send_event(vbi, &e);
-			//*******************************************finish
+			}	
+			e.type = VBI_EVENT_PROG_INFO;
+			e.ev.prog_info = pi;
+			caption_send_event(vbi, &e);
 
 			break;
 		}
