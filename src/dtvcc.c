@@ -2828,6 +2828,10 @@ dtvcc_display_windows		(struct dtvcc_decoder *	dc,
 	unsigned int i;
 
 	window_map &= ds->created;
+	if(ds->curr_window == NULL && ds->created == 0) {
+		LOGI("display windows error: cur win is NULL");
+		return FALSE;
+	}
 
 	for (i = 0; i < 8; ++i) {
 		struct dtvcc_window *dw;
@@ -3413,6 +3417,7 @@ dtvcc_decode_packet		(struct dtvcc_decoder *	dc,
 			continue;
 
 		dtvcc_reset_service (ds);
+		dc->next_sequence_number = -1;
 	}
 
 	return;
