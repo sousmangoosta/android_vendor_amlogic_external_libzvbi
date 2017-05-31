@@ -23,6 +23,10 @@ LOCAL_SHARED_LIBRARIES += libicuuc liblog
 
 LOCAL_PRELINK_MODULE := false
 
+ifeq ($(shell test $(PLATFORM_SDK_VERSION) -ge 26 && echo OK),OK)
+LOCAL_PROPRIETARY_MODULE := true
+endif
+
 include $(BUILD_SHARED_LIBRARY)
 include $(LOCAL_PATH)/ntsc_decode/Android.mk
 #include $(LOCAL_PATH)/test/Android.mk

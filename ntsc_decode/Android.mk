@@ -4,15 +4,18 @@ include $(CLEAR_VARS)
 LOCAL_SRC_FILES:=am_vbi.c  \
 				    sliced_vbi.c    \
 				    ntsc_dmx/am_vbi_dmx.c \
-				    ntsc_dmx/linux_vbi/linux_ntsc.c  
-					
-LOCAL_SHARED_LIBRARIES+= libzvbi 
+				    ntsc_dmx/linux_vbi/linux_ntsc.c
+
+LOCAL_SHARED_LIBRARIES+= libzvbi
 
 LOCAL_C_INCLUDES:=$(LOCAL_PATH)/../src \
 				  $(LOCAL_PATH)/include/ \
-				  $(LOCAL_PATH)/include/ntsc_dmx/  
-	
-				  
+				  $(LOCAL_PATH)/include/ntsc_dmx/
+
+ifeq ($(shell test $(PLATFORM_SDK_VERSION) -ge 26 && echo OK),OK)
+LOCAL_PROPRIETARY_MODULE := true
+endif
+
 LOCAL_MODULE:= libntsc_decode
 LOCAL_MODULE_TAGS := optional
 LOCAL_ARM_MODE := arm
