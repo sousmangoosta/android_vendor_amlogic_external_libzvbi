@@ -385,6 +385,18 @@ typedef enum {
 	VBI_AUDIO_MODE_UNKNOWN
 } vbi_audio_mode;
 
+typedef struct vbi_rating{
+	/*
+	 *  For details STFW for "v-chip"
+	 *  If unknown rating_auth == VBI_RATING_NONE
+	 */
+	vbi_rating_auth auth;
+	int id;
+	/* Only valid when auth == VBI_RATING_TV_US */
+	int dlsv;
+}vbi_rating;
+
+
 typedef struct vbi_program_info {
 	/*
 	 *  Refers to the current or next program.
@@ -440,11 +452,7 @@ typedef struct vbi_program_info {
 	 *  For details STFW for "v-chip"
 	 *  If unknown rating_auth == VBI_RATING_NONE
 	 */
-	vbi_rating_auth		rating_auth;
-	int			rating_id;
-
-	/* Only valid when auth == VBI_RATING_TV_US */
-	int			rating_dlsv;
+	vbi_rating rating;
 
 	/* 06 Program Audio Services */
 
@@ -509,6 +517,7 @@ extern void		vbi_reset_prog_info(vbi_program_info *pi);
 #define	VBI_EVENT_ASPECT	0x0040
 #define	VBI_EVENT_PROG_INFO	0x0080
 #define	VBI_EVENT_NETWORK_ID	0x0100
+#define VBI_EVENT_RATING	0x0200
 
 
 

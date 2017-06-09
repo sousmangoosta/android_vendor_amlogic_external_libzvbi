@@ -205,7 +205,7 @@ static void vbi_xds_handler	(vbi_event *		ev, void *		user_data)
 			 *  For details STFW for "v-chip"
 			 *  If unknown rating_auth == VBI_RATING_NONE
 			 */
-			if(!(prog_info->rating_auth == VBI_RATING_AUTH_NONE))
+			if(!(prog_info->rating.auth == VBI_RATING_AUTH_NONE))
 			{
 				xds_program = VBI_XDS_PROGRAM_RATING;
 				AM_DEBUG("xds*********VBI_XDS_PROGRAM_RATING \n");
@@ -244,30 +244,30 @@ static void vbi_xds_handler	(vbi_event *		ev, void *		user_data)
 		
 	}	
 	
-	if(prog_info->rating_auth != VBI_RATING_AUTH_NONE)
+	if(prog_info->rating.auth != VBI_RATING_AUTH_NONE)
 	{
-			AM_DEBUG("xds**********prog_info->rating_auth  = %d\n",prog_info->rating_auth );
+			AM_DEBUG("xds**********prog_info->rating_auth  = %d\n",prog_info->rating.auth );
 	
-			if(prog_info->rating_auth == VBI_RATING_AUTH_MPAA)
+			if(prog_info->rating.auth == VBI_RATING_AUTH_MPAA)
 					AM_DEBUG("xds**********result*******************VBI_RATING_AUTH_MPAA\n");
-			if(prog_info->rating_auth == VBI_RATING_AUTH_TV_US)
+			if(prog_info->rating.auth == VBI_RATING_AUTH_TV_US)
 					AM_DEBUG("xds**********result*******************VBI_RATING_AUTH_TV_US\n");
-			if(prog_info->rating_auth == VBI_RATING_AUTH_TV_CA_EN)
+			if(prog_info->rating.auth == VBI_RATING_AUTH_TV_CA_EN)
 					AM_DEBUG("xds**********result*******************VBI_RATING_AUTH_TV_CA_EN\n");
-			if(prog_info->rating_auth == VBI_RATING_AUTH_TV_CA_FR)
+			if(prog_info->rating.auth == VBI_RATING_AUTH_TV_CA_FR)
 					AM_DEBUG("xds**********result*******************VBI_RATING_AUTH_TV_CA_FR\n");
-			if(prog_info->rating_auth == VBI_RATING_AUTH_NONE)
+			if(prog_info->rating.auth == VBI_RATING_AUTH_NONE)
 					AM_DEBUG("result*******************VBI_RATING_AUTH_NONE\n");
 			
-			if (prog_info->rating_dlsv == VBI_RATING_D)
+			if (prog_info->rating.dlsv == VBI_RATING_D)
 				AM_DEBUG("xds**********result*******************VBI_RATING_D\n");
-			if (prog_info->rating_dlsv == VBI_RATING_L)
+			if (prog_info->rating.dlsv == VBI_RATING_L)
 				AM_DEBUG("xds**********result*******************VBI_RATING_L\n");
-			if (prog_info->rating_dlsv == VBI_RATING_S)
+			if (prog_info->rating.dlsv == VBI_RATING_S)
 				AM_DEBUG("xds**********result*******************VBI_RATING_S\n");
-			if (prog_info->rating_dlsv == VBI_RATING_V)
+			if (prog_info->rating.dlsv == VBI_RATING_V)
 				AM_DEBUG("xds**********result*******************VBI_RATING_V\n");
-			AM_DEBUG("xds**********result*******************prog_info->rating_id = %d\n",prog_info->rating_id );
+			AM_DEBUG("xds**********result*******************prog_info->rating_id = %d\n",prog_info->rating.id );
 			
 	}
 		
