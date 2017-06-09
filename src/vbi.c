@@ -795,7 +795,7 @@ vbi_reset_prog_info(vbi_program_info *pi)
 	/* PT */
 	pi->type_classf = VBI_PROG_CLASSF_NONE;
 	/* PR */
-	pi->rating_auth = VBI_RATING_AUTH_NONE;
+	pi->rating.auth = VBI_RATING_AUTH_NONE;
 	/* PAS */
 	pi->audio[0].mode = VBI_AUDIO_MODE_UNKNOWN;
 	pi->audio[0].language = NULL;

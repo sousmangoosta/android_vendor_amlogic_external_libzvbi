@@ -169,7 +169,7 @@ xds_decoder(vbi_decoder *vbi, int _class, int type,
 	switch (_class) {
 	case XDS_CURRENT: /* 0 */
 	case XDS_FUTURE: /* 1 */
-		if (!(vbi->event_mask & (VBI_EVENT_ASPECT | VBI_EVENT_PROG_INFO))){
+		if (!(vbi->event_mask & (VBI_EVENT_ASPECT | VBI_EVENT_PROG_INFO | VBI_EVENT_RATING))){
 			XDS_SEP_DEBUG("vbi->event_mask & VBI_EVENT_ASPECT | VBI_EVENT_PROG_INFO");
 			return;
 		}
@@ -309,7 +309,7 @@ xds_decoder(vbi_decoder *vbi, int _class, int type,
 			if ((buffer[0] & 0x08) == 0) {
 				if (r == 0) return;
 				auth = VBI_RATING_AUTH_MPAA;
-				pi->rating_dlsv = dlsv = 0;
+				pi->rating.dlsv = dlsv = 0;
 			} else if ((buffer[0] & 0x10) == 0) {
 				auth = VBI_RATING_AUTH_TV_US;
 				r = g;
@@ -321,20 +321,22 @@ xds_decoder(vbi_decoder *vbi, int _class, int type,
 					if ((r = g) > 5) return;
 					auth = VBI_RATING_AUTH_TV_CA_FR;
 				}
-				pi->rating_dlsv = dlsv = 0;
+				pi->rating.dlsv = dlsv = 0;
 			} else
 				return;
 
-			if ((neq = (pi->rating_auth != auth
-				    || pi->rating_id != r
-				    || pi->rating_dlsv != dlsv))) {
-				pi->rating_auth = auth;
-				pi->rating_id = r;
-				pi->rating_dlsv = dlsv;
-			}	
-			e.type = VBI_EVENT_PROG_INFO;
-			e.ev.prog_info = pi;
-			caption_send_event(vbi, &e);
+			if ((neq = (pi->rating.auth != auth
+				    || pi->rating.id != r
+				    || pi->rating.dlsv != dlsv))) {
+				pi->rating.auth = auth;
+				pi->rating.id = r;
+				pi->rating.dlsv = dlsv;
+			}
+			if (vbi->event_mask & VBI_EVENT_RATING){
+				e.type = VBI_EVENT_RATING;
+				e.ev.prog_info = pi;
+				caption_send_event(vbi, &e);
+			}
 
 			break;
 		}
