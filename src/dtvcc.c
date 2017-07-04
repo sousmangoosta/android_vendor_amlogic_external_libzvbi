@@ -2759,7 +2759,7 @@ dtvcc_define_window		(struct dtvcc_decoder *	dc,
 
 	column_count_m1 = buf[5];
 	/* We also check the top two zero bits. */
-	if (unlikely (column_count_m1 >= 41)) {
+	if (unlikely (column_count_m1 >= 42)) {
 		ds->error_line = __LINE__;
 		return FALSE;
 	}
