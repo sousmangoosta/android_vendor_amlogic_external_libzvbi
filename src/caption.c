@@ -1157,10 +1157,13 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 				word_break(cc, ch, 1);
 				update(ch);
 
-				memmove(acp, acp + COLUMNS, sizeof(*acp) * (ch->roll - 1) * COLUMNS);
+				if (ch->mode == MODE_ROLL_UP)
+                {
+                    memmove(acp, acp + COLUMNS, sizeof(*acp) * (ch->roll - 1) * COLUMNS);
 
-				for (i = 0; i <= COLUMNS; i++)
-					ch->line[i] = cc->transp_space[chan >> 2];
+                    for (i = 0; i <= COLUMNS; i++)
+                        ch->line[i] = cc->transp_space[chan >> 2];
+                }
 
 				if (ch->mode != MODE_POP_ON) {
 					update(ch);
