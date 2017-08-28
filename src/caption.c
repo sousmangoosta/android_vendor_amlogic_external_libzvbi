@@ -897,10 +897,25 @@ erase_memory(struct caption *cc, cc_channel *ch, int page)
 	vbi_page *pg = ch->pg + page;
 	vbi_char *acp = pg->text;
 	vbi_char c = cc->transp_space[ch >= &cc->channel[4]];
-	int i;
+	int i,j;
 
-	for (i = 0; i < COLUMNS * ROWS; acp++, i++)
-		*acp = c;
+	if(ch >= &cc->channel[4])
+    {
+        c = cc->transp_space[0];
+    	for(j=0; j<4; j++)
+    	{
+    		acp = (cc->channel[j].pg+0)->text;
+    		for (i = 0; i < COLUMNS * ROWS; acp++, i++)
+    			*acp = c;
+				
+    		acp = (cc->channel[j].pg+1)->text;
+    		for (i = 0; i < COLUMNS * ROWS; acp++, i++)
+    			*acp = c;
+    	}
+    }
+    else
+		for (i = 0; i < COLUMNS * ROWS; acp++, i++)
+			*acp = c;
 
 	pg->dirty.y0 = 0;
 	pg->dirty.y1 = ROWS - 1;
