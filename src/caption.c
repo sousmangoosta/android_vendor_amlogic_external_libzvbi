@@ -899,23 +899,8 @@ erase_memory(struct caption *cc, cc_channel *ch, int page)
 	vbi_char c = cc->transp_space[ch >= &cc->channel[4]];
 	int i,j;
 
-	if(ch >= &cc->channel[4])
-    {
-        c = cc->transp_space[0];
-    	for(j=0; j<4; j++)
-    	{
-    		acp = (cc->channel[j].pg+0)->text;
-    		for (i = 0; i < COLUMNS * ROWS; acp++, i++)
-    			*acp = c;
-				
-    		acp = (cc->channel[j].pg+1)->text;
-    		for (i = 0; i < COLUMNS * ROWS; acp++, i++)
-    			*acp = c;
-    	}
-    }
-    else
-		for (i = 0; i < COLUMNS * ROWS; acp++, i++)
-			*acp = c;
+	for (i = 0; i < COLUMNS * ROWS; acp++, i++)
+		*acp = c;
 
 	pg->dirty.y0 = 0;
 	pg->dirty.y1 = ROWS - 1;
@@ -1211,7 +1196,17 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 // s1, s4: EDM always before EOC
 			if (ch->mode != MODE_POP_ON)
 				erase_memory(cc, ch, ch->hidden);
-
+            
+            /* Received this cmd in text mode */
+            if(cc->curr_chan > 3)
+            {
+                for(i=0; i<4; i++, ch = cc->channel[i])
+                {
+                    erase_memory (cc, ch, 0);
+                    erase_memory (cc, ch, 1);
+                }
+            }
+            
 			erase_memory(cc, ch, ch->hidden ^ 1);
 			clear(ch->pg + (ch->hidden ^ 1));
 
