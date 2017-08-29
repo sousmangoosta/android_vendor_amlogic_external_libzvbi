@@ -1194,24 +1194,29 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 
 		case 12:	/* Erase Displayed Memory	001 c10f  010 1100 */
 // s1, s4: EDM always before EOC
-			if (ch->mode != MODE_POP_ON)
-				erase_memory(cc, ch, ch->hidden);
-            
-            /* Received this cmd in text mode */
-            if(cc->curr_chan > 3)
-            {
-                for(i=0; i<4; i++, ch = cc->channel[i])
-                {
-                    erase_memory (cc, ch, 0);
-                    erase_memory (cc, ch, 1);
-                }
-            }
-            
-			erase_memory(cc, ch, ch->hidden ^ 1);
-			clear(ch->pg + (ch->hidden ^ 1));
-
+			/* Received in text mode */
+			if (cc->curr_chan >= 4)
+			{
+				for (i = 0; i < 2; i++ )
+				{
+					ch = &cc->channel[i + cc->curr_chan - 4];
+					erase_memory(cc, ch, 0);
+					erase_memory(cc, ch, 1);
+				}
+			}
+			else 
+			{
+			
+				if (ch->mode != MODE_POP_ON)
+					erase_memory(cc, ch, ch->hidden);
+			
+				erase_memory(cc, ch, ch->hidden ^ 1);
+			
+			
+				clear(ch->pg + (ch->hidden ^ 1));
+			}
+			
 			return;
-
 		case 14:	/* Erase Non-Displayed Memory	001 c10f  010 1110 */
 // not verified
 			if (ch->mode == MODE_POP_ON)
