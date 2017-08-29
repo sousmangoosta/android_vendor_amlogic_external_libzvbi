@@ -1199,7 +1199,7 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 			{
 				for (i = 0; i < 2; i++ )
 				{
-					ch = &cc->channel[i + cc->curr_chan - 4];
+					ch = &cc->channel[i + (cc->curr_chan - 4)/2];
 					erase_memory(cc, ch, 0);
 					erase_memory(cc, ch, 1);
 				}
