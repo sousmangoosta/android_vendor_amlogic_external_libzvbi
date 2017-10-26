@@ -33,7 +33,6 @@
 
 #include "libzvbi.h"
 #include "dtvcc.h"
-#include <android/log.h>
 
 #define elements(array) (sizeof(array) / sizeof(array[0]))
 
@@ -84,6 +83,10 @@ do {									\
 	  _member)) : (_type *) 0;					\
 })
 
+#define VBI_RGBA(r, g, b)						\
+	((((r) & 0xFF) << 0) | (((g) & 0xFF) << 8)			\
+	 | (((b) & 0xFF) << 16) | (0xFF << 24))
+
 /* These should be defined in inttypes.h. */
 #ifndef PRId64
 #  define PRId64 "lld"
@@ -99,8 +102,6 @@ extern void
 vbi_transp_colormap(vbi_decoder *vbi, vbi_rgba *d, vbi_rgba *s, int entries);
 extern void
 vbi_send_event(vbi_decoder *vbi, vbi_event *ev);
-extern void
-vbi_decode_caption(vbi_decoder *vbi, int line, uint8_t *buf);
 static void
 dtvcc_get_visible_windows(struct dtvcc_service *ds, int *cnt, struct dtvcc_window **windows);
 
@@ -2145,7 +2146,7 @@ dtvcc_g2 [96] = {
 	0x2019, /* 0x1032 Right single quotation mark */
 	0x201C, /* 0x1033 Left double quotation mark */
 	0x201D, /* 0x1034 Right double quotation mark */
-	0,
+	0x2022,
 	0,
 	0,
 	0x2122, /* 0x1039 Trademark sign */
@@ -2230,7 +2231,7 @@ dtvcc_map_color(dtvcc_color c)
 	return ret;
 }
 
-static unsigned int
+unsigned int
 dtvcc_unicode			(unsigned int		c)
 {
 	if (unlikely (0 == (c & 0x60))) {
@@ -2251,17 +2252,77 @@ dtvcc_unicode			(unsigned int		c)
 		/* We map all G2/G3 characters which are not
 		   representable in Unicode to private code U+E900
 		   ... U+E9FF. */
-		return 0xE9A0; /* caption icon */
+		return 0xf101; /* caption icon */
 	}
 
 	return 0;
 }
 
 static void
-dtvcc_event(struct dtvcc_decoder *dc, struct dtvcc_service *ds)
+dtvcc_render(struct dtvcc_decoder *	dc, struct dtvcc_service *	ds)
 {
+#if 0
 	vbi_event event;
 	struct tvcc_decoder *td = PARENT(dc, struct tvcc_decoder, dtvcc);
+	struct dtvcc_window *win[8];
+	int i, cnt;
+
+	//printf("render check\n");
+
+	cnt = 8;
+	dtvcc_get_visible_windows(ds, &cnt, win);
+	//if (!cnt)
+	//	return;
+
+	if (cnt != ds->old_win_cnt) {
+		//printf("cnt changed\n");
+		goto changed;
+	}
+
+	for (i = 0; i < cnt; i ++) {
+		struct dtvcc_window *w1 = win[i];
+		struct dtvcc_window *w2 = &ds->old_window[i];
+
+		if (memcmp(w1->buffer, w2->buffer, sizeof(w1->buffer))) {
+			//printf("text changed\n");
+			goto changed;
+		}
+
+		if (memcmp(&w1->style, &w2->style, sizeof(w1->style))) {
+			//printf("style changed\n");
+			goto changed;
+		}
+
+		if (memcmp(&w1->curr_pen, &w2->curr_pen, sizeof(w1->curr_pen))) {
+			//printf("pen changed\n");
+			goto changed;
+		}
+
+		if (w1->row_count != w2->row_count) {
+			//printf("row changed\n");
+			goto changed;
+		}
+
+		if (w1->column_count != w2->column_count) {
+			//printf("col changed\n");
+			goto changed;
+		}
+
+		if (w1->visible != w2->visible) {
+			//printf("vis changed\n");
+			goto changed;
+		}
+	}
+
+	return;
+changed:
+	for (i = 0; i < cnt; i ++) {
+		ds->old_window[i] = *win[i];
+	}
+	ds->old_win_cnt = cnt;
+#endif
+	ds->update = 1;
+#if 0
 
 	event.type = VBI_EVENT_CAPTION;
 	event.ev.caption.pgno = ds - dc->service + 1 + 8/*after 8 cc channels*/;
@@ -2272,12 +2333,7 @@ dtvcc_event(struct dtvcc_decoder *dc, struct dtvcc_service *ds)
 	vbi_send_event(td->vbi, &event);
 
 	pthread_mutex_lock(&td->mutex);
-}
-
-static void
-dtvcc_render(struct dtvcc_decoder *dc, struct dtvcc_service *ds)
-{
-	ds->update = 1;
+#endif
 }
 
 static void
@@ -2395,6 +2451,9 @@ dtvcc_put_char			(struct dtvcc_decoder *	dc,
 	dc = dc; /* unused */
 
 	dw = ds->curr_window;
+
+	//printf("putchar %c\n", c);
+
 	if (NULL == dw) {
 		ds->error_line = __LINE__;
 		return FALSE;
@@ -2406,6 +2465,7 @@ dtvcc_put_char			(struct dtvcc_decoder *	dc,
 	/* FIXME how should we handle TEXT_TAG_NOT_DISPLAYABLE? */
 
 	dw->buffer[row][column] = c;
+	dw->pen[row][column]    = dw->curr_pen.style;
 
 	switch (dw->style.print_direction) {
 	case DIR_LEFT_RIGHT:
@@ -2631,10 +2691,11 @@ dtvcc_clear_windows		(struct dtvcc_decoder *	dc,
 		dtvcc_stream_event (dc, ds, dw, dw->curr_row);
 
 		memset (dw->buffer, 0, sizeof (dw->buffer));
+		memset (dw->pen, 0, sizeof(dw->pen));
 
 		dw->streamed = 0;
 
-		if(dw->visible)
+		if (dw->visible)
 			dtvcc_render(dc, ds);
 
 		/* FIXME CEA 708-C Section 7.1.4 (Form Feed)
@@ -2727,6 +2788,8 @@ dtvcc_define_window		(struct dtvcc_decoder *	dc,
 	unsigned int pen_style_id;
 	unsigned int c;
 
+	//printf("define window\n");
+
 	if (0 != ((buf[1] | buf[6]) & 0xC0)) {
 		ds->error_line = __LINE__;
 		return FALSE;
@@ -2757,12 +2820,15 @@ dtvcc_define_window		(struct dtvcc_decoder *	dc,
 		return FALSE;
 	}
 
+	//printf("define window %d\n", column_count_m1);
+
 	column_count_m1 = buf[5];
 	/* We also check the top two zero bits. */
 	if (unlikely (column_count_m1 >= 42)) {
 		ds->error_line = __LINE__;
 		return FALSE;
 	}
+	//printf("define windowa\n");
 
 	window_id = buf[0] & 7;
 	dw = &ds->window[window_id];
@@ -2816,6 +2882,8 @@ dtvcc_define_window		(struct dtvcc_decoder *	dc,
 
 	ds->created |= window_map;
 
+	//printf("define %x %x\n", ds->curr_window, ds->created);
+
 	return dtvcc_clear_windows (dc, ds, window_map);
 }
 
@@ -2828,9 +2896,12 @@ dtvcc_display_windows		(struct dtvcc_decoder *	dc,
 	unsigned int i;
 
 	window_map &= ds->created;
+
+	//printf("display %02x %p %02x\n", c, ds->curr_window, ds->created);
+
 	if(ds->curr_window == NULL && ds->created == 0) {
-		LOGI("display windows error: cur win is NULL");
 		return FALSE;
+		//return TRUE;
 	}
 
 	for (i = 0; i < 8; ++i) {
@@ -2905,8 +2976,11 @@ dtvcc_carriage_return		(struct dtvcc_decoder *	dc,
 			     column > 0; --column) {
 				dw->buffer[row][column] =
 					dw->buffer[row][column - 1];
+				dw->pen[row][column] =
+					dw->pen[row][column - 1];
 			}
 			dw->buffer[row][column] = 0;
+			memset(&dw->pen[row][column], 0, sizeof(dw->pen[0][0]));
 		}
 		break;
 
@@ -2922,8 +2996,11 @@ dtvcc_carriage_return		(struct dtvcc_decoder *	dc,
 			     column < dw->column_count - 1; ++column) {
 				dw->buffer[row][column] =
 					dw->buffer[row][column + 1];
+				dw->pen[row][column] =
+					dw->pen[row][column + 1];
 			}
 			dw->buffer[row][column] = 0;
+			memset(&dw->pen[row][column], 0, sizeof(dw->pen[0][0]));
 		}
 		break;
 
@@ -2937,7 +3014,10 @@ dtvcc_carriage_return		(struct dtvcc_decoder *	dc,
 			& ~(1 << dw->row_count);
 		memmove (&dw->buffer[1], &dw->buffer[0],
 			 sizeof (dw->buffer[0]) * (dw->row_count - 1));
+		memmove (&dw->pen[1], &dw->pen[0],
+			 sizeof (dw->pen[0]) * (dw->row_count - 1));
 		memset (&dw->buffer[0], 0, sizeof (dw->buffer[0]));
+		memset (&dw->pen[0], 0, sizeof(dw->pen[0]));
 		break;
 
 	case DIR_BOTTOM_TOP:
@@ -2949,7 +3029,10 @@ dtvcc_carriage_return		(struct dtvcc_decoder *	dc,
 		dw->streamed >>= 1;
 		memmove (&dw->buffer[0], &dw->buffer[1],
 			 sizeof (dw->buffer[0]) * (dw->row_count - 1));
+		memmove (&dw->pen[0], &dw->pen[1],
+			 sizeof (dw->pen[0]) * (dw->row_count - 1));
 		memset (&dw->buffer[row], 0, sizeof (dw->buffer[0]));
+		memset (&dw->pen[row], 0, sizeof (dw->pen[0]));
 		break;
 	}
 
@@ -3029,6 +3112,7 @@ dtvcc_backspace			(struct dtvcc_decoder *	dc,
 	if (0 != dw->buffer[row][column]) {
 		dw->streamed &= ~mask;
 		dw->buffer[row][column] = 0;
+		memset(&dw->pen[row][column], 0, sizeof(dw->pen[0][0]));
 	}
 
 	dw->curr_row = row;
@@ -3063,6 +3147,8 @@ dtvcc_hor_carriage_return	(struct dtvcc_decoder *	dc,
 		mask = 1 << row;
 		memset (&dw->buffer[row][0], 0,
 			sizeof (dw->buffer[0]));
+		memset (&dw->pen[row][0], 0,
+			sizeof (dw->pen[0]));
 		if (DIR_LEFT_RIGHT == dw->style.print_direction)
 			dw->curr_column = 0;
 		else
@@ -3072,8 +3158,10 @@ dtvcc_hor_carriage_return	(struct dtvcc_decoder *	dc,
 	case DIR_TOP_BOTTOM:
 	case DIR_BOTTOM_TOP:
 		mask = 1 << column;
-		for (row = 0; row < dw->column_count; ++row)
+		for (row = 0; row < dw->column_count; ++row) {
 			dw->buffer[row][column] = 0;
+			memset(&dw->pen[row][column], 0, sizeof(dw->pen[0][0]));
+		}
 		if (DIR_TOP_BOTTOM == dw->style.print_direction)
 			dw->curr_row = 0;
 		else
@@ -3093,20 +3181,33 @@ dtvcc_delete_windows		(struct dtvcc_decoder *	dc,
 {
 	struct dtvcc_window *dw;
 	int i;
+	int changed = 0;
 
 	for (i = 0; i < N_ELEMENTS(ds->window); i ++) {
 		dw = &ds->window[i];
 
-		if (window_map & (1 << i)) {
-			dtvcc_stream_event (dc, ds, dw, dw->curr_row);
-			if (ds->curr_window == dw)
-				ds->curr_window = NULL;
+		if (NULL != dw) {
+			unsigned int window_id;
 
-			if (dw->visible)
-				dtvcc_render(dc, ds);
+			window_id = dtvcc_window_id (ds, dw);
+			if (ds->created & (1 << window_id)) {
+				if (window_map & (1 << window_id)) {
+					//printf("delete window %d\n", window_id);
+					dtvcc_stream_event (dc, ds, dw, dw->curr_row);
 
-			dw->visible = 0;
-			memset(dw->buffer, 0, sizeof(dw->buffer));
+					if (dw == ds->curr_window)
+						ds->curr_window = NULL;
+
+					if (dw->visible)
+						dtvcc_render(dc, ds);
+
+					memset (dw->buffer, 0, sizeof (dw->buffer));
+					memset (dw->pen, 0, sizeof(dw->pen));
+					dw->visible = 0;
+
+					changed = 1;
+				}
+			}
 		}
 	}
 
@@ -3134,7 +3235,8 @@ dtvcc_command			(struct dtvcc_decoder *	dc,
 
 	if (*se_length > n_bytes) {
 		ds->error_line = __LINE__;
-		return FALSE;
+		//return FALSE;
+		return TRUE;
 	}
 
 	switch (c) {
@@ -3154,10 +3256,7 @@ dtvcc_command			(struct dtvcc_decoder *	dc,
 		window_id = c & 7;
 		if (0 == (ds->created & (1 << window_id))) {
 			ds->error_line = __LINE__;
-			LOGI("cc cmd:%02x, set window_id:%d, not create?%d",
-				c, window_id, ds->created);
-			return TRUE;
-			//return FALSE;
+			return FALSE;
 		}
 		ds->curr_window = &ds->window[window_id];
 		return TRUE;
@@ -3272,6 +3371,16 @@ dtvcc_decode_syntactic_elements	(struct dtvcc_decoder *	dc,
 {
 	ds->timestamp = dc->timestamp;
 
+#if 0
+	printf("servie %d\n", n_bytes);
+	{
+		int i;
+
+		for (i = 0; i < n_bytes; i ++)
+			printf("%02x ", buf[i]);
+		printf("\n");
+	}
+#endif
 	while (n_bytes > 0) {
 		unsigned int se_length;
 
@@ -3283,9 +3392,12 @@ dtvcc_decode_syntactic_elements	(struct dtvcc_decoder *	dc,
 			continue;
 		}
 
+		//printf("dec se %02x\n", buf[0]);
+
 		if (!dtvcc_decode_se (dc, ds,
 				      &se_length,
 				      buf, n_bytes)) {
+			//printf("decode se error\n");
 			return FALSE;
 		}
 
@@ -3305,6 +3417,14 @@ dtvcc_decode_packet		(struct dtvcc_decoder *	dc,
 	unsigned int packet_size;
 	unsigned int i;
 
+#if 0
+	printf("%d dtvcc decode packet %d: ", get_input_offset(), dc->packet_size);
+
+	for (i = 0; i < dc->packet_size; i ++) {
+		printf("%02x ", dc->packet[i]);
+	}
+	printf("\n");
+#endif
 	dc->timestamp.sys = *tv;
 	dc->timestamp.pts = pts;
 
@@ -3315,6 +3435,7 @@ dtvcc_decode_packet		(struct dtvcc_decoder *	dc,
 
 	if (dc->next_sequence_number >= 0
 	    && 0 != ((dc->packet[0] ^ dc->next_sequence_number) & 0xC0)) {
+		printf("seq reset\n");
 		dtvcc_reset (dc);
 		return;
 	}
@@ -3329,8 +3450,10 @@ dtvcc_decode_packet		(struct dtvcc_decoder *	dc,
 	/* CEA 708-C Section 5: Apparently packet_size need not be
 	   equal to the actually transmitted amount of data. */
 	if (packet_size > dc->packet_size) {
+		/*
 		dtvcc_reset (dc);
-		return;
+		return;*/
+		packet_size = dc->packet_size;
 	}
 
 	/* Service Layer. */
@@ -3354,6 +3477,8 @@ dtvcc_decode_packet		(struct dtvcc_decoder *	dc,
 		c = dc->packet[i]; 
 		service_number = (c & 0xE0) >> 5;
 
+		//printf("srv %d\n", service_number);
+
 		/* CEA 708-C Section 6.3: Ignore block_size if
 		   service_number is zero. */
 		if (0 == service_number) {
@@ -3369,20 +3494,25 @@ dtvcc_decode_packet		(struct dtvcc_decoder *	dc,
 
 		if (7 == service_number) {
 			if (i + 1 > packet_size)
-				goto service_block_incomplete;
+				break;
+				//goto service_block_incomplete;
 
 			header_size = 2;
 			c = dc->packet[i + 1];
 
 			/* We also check the null_fill bits. */
 			if (c < 7 || c > 63)
-				goto invalid_service_block;
+				break;
+				//goto invalid_service_block;
 
 			service_number = c;
 		}
 
+		//printf("srv %d %d %d %d\n", service_number, header_size, block_size, packet_size);
+
 		if (i + header_size + block_size > packet_size)
-			goto service_block_incomplete;
+			break;
+			//goto service_block_incomplete;
 
 		if (service_number <= 6) {
 			struct dtvcc_service *ds;
@@ -3399,6 +3529,7 @@ dtvcc_decode_packet		(struct dtvcc_decoder *	dc,
 		i += header_size + block_size;
 	}
 
+	//printf("check\n");
 	for (i = 0; i < 6; ++i) {
 		struct dtvcc_service *ds;
 		struct program *pr;
@@ -3461,24 +3592,17 @@ dtvcc_try_decode_packet		(struct dtvcc_decoder *	dc,
 static void
 dtvcc_reset_service		(struct dtvcc_service *	ds)
 {
-	int i = 0;
 	ds->curr_window = NULL;
 	ds->created = 0;
-	for(i=0; i<8; i++)
-	{
-		memset(&ds->window[i], 0, sizeof(struct dtvcc_window));
-		memset(ds->window[i].buffer, 0, sizeof(ds->window[i].buffer));
-	}
+
 	cc_timestamp_reset (&ds->timestamp);
 }
 
 void
 dtvcc_reset			(struct dtvcc_decoder *	dc)
 {
-	int i;
-	for(i=0; i<6; i++){
-		dtvcc_reset_service (&dc->service[i]);
-	}
+	dtvcc_reset_service (&dc->service[0]);
+	dtvcc_reset_service (&dc->service[1]);
 
 	dc->packet_size = 0;
 	dc->next_sequence_number = -1;
@@ -3488,9 +3612,7 @@ void
 dtvcc_init		(struct dtvcc_decoder *	dc)
 {
 	memset(dc, 0, sizeof(struct dtvcc_decoder));
-
 	dtvcc_reset (dc);
-
 	cc_timestamp_reset (&dc->timestamp);
 }
 
@@ -3511,8 +3633,9 @@ static void dtvcc_window_to_page(vbi_decoder *vbi, struct dtvcc_window *dw, stru
 #if 1
 	pg->rows = dw->row_count;
 	pg->columns = dw->column_count;
-	
+
 	dtvcc_set_page_color_map(vbi, pg);
+	memset(dw->row_start, 0, sizeof(dw->row_start));
 	
 	for (i=0; i<pg->rows; i++)
 	{
@@ -3540,13 +3663,14 @@ static void dtvcc_window_to_page(vbi_decoder *vbi, struct dtvcc_window *dw, stru
 			if (0 == c) {
 				ac.unicode = 0x20;
 				ac.opacity = VBI_TRANSPARENT_SPACE;
+				dw->row_start[i] ++;
 			} else {
 				ac.unicode = dtvcc_unicode (c);
 				if (0 == ac.unicode) {
 					ac.unicode = 0x20;
+					dw->row_start[i] ++;
 				}
 			}
-
 			pg->text[i*pg->columns + j] = ac;
 		}
 	}
@@ -3664,7 +3788,23 @@ tvcc_decode_data			(struct tvcc_decoder *td,
 	cc_count = buf[1] & 0x1F;
 	dtvcc = FALSE;
 
+#if 0
+	printf("tvcc decode %d:\n", n_bytes);
+	{
+		int i;
+
+		for (i = 0; i < n_bytes; i ++) {
+			printf("%02x ", buf[i]);
+			if ((i + 1) % 16 == 0)
+				printf("\n");
+		}
+		printf("\n");
+	}
+#endif
 	pthread_mutex_lock(&td->mutex);
+
+	//printf("cc count %d\n", cc_count);
+
 	for (i = 0; i < cc_count; ++i) {
 		unsigned int b0;
 		unsigned int cc_valid;
@@ -3679,9 +3819,12 @@ tvcc_decode_data			(struct tvcc_decoder *td,
 		cc_data_1 = buf[4 + i * 3];
 		cc_data_2 = buf[5 + i * 3];
 
+		//printf("cc type %02x %02x %02x %02x\n", cc_type, cc_valid, cc_data_1, cc_data_2);
+
 		switch (cc_type) {
 		case NTSC_F1:
 		case NTSC_F2:
+			//printf("ntsc cc\n");
 			/* Note CEA 708-C Table 4: Only one NTSC pair
 			   will be present in field picture user_data
 			   or in progressive video pictures, and up to
@@ -3701,6 +3844,7 @@ tvcc_decode_data			(struct tvcc_decoder *td,
 
 		case DTVCC_DATA:
 			j = td->dtvcc.packet_size;
+			//printf("atsc data %d %d %02x %02x\n", j, cc_valid, cc_data_1, cc_data_2);
 			if (j <= 0) {
 				/* Missed packet start. */
 				break;
@@ -3722,6 +3866,7 @@ tvcc_decode_data			(struct tvcc_decoder *td,
 		case DTVCC_START:
 			dtvcc = TRUE;
 			j = td->dtvcc.packet_size;
+			//printf("atsc start %d %d %02x %02x\n", j, cc_valid, cc_data_1, cc_data_2);
 			if (j > 0) {
 				/* End of DTVCC packet. */
 				dtvcc_decode_packet (&td->dtvcc,
@@ -3734,20 +3879,33 @@ tvcc_decode_data			(struct tvcc_decoder *td,
 				td->dtvcc.packet[0] = cc_data_1;
 				td->dtvcc.packet[1] = cc_data_2;
 				td->dtvcc.packet_size = 2;
-
-				dtvcc_try_decode_packet (&td->dtvcc, &now, pts);
+				dtvcc_try_decode_packet(&td->dtvcc, &now, pts);
 			}
 			break;
 		}
 	}
 
-	for (i = 0; i < N_ELEMENTS(td->dtvcc.service); i ++) {
-		struct dtvcc_service *ds = &td->dtvcc.service[i];
+	{
+		int i;
 
-		if (ds->update) {
-			dtvcc_event(&td->dtvcc, ds);
+		for (i = 0; i < N_ELEMENTS(td->dtvcc.service); i ++) {
+			struct dtvcc_service *ds = &td->dtvcc.service[i];
 
-			ds->update = 0;
+			if (ds->update) {
+				struct vbi_event event;
+
+				event.type = VBI_EVENT_CAPTION;
+				event.ev.caption.pgno = i + 1 + 8/*after 8 cc channels*/;
+
+				/* Permits calling tvcc_fetch_page from handler */
+				pthread_mutex_unlock(&td->mutex);
+
+				vbi_send_event(td->vbi, &event);
+
+				pthread_mutex_lock(&td->mutex);
+
+				ds->update = 0;
+			}
 		}
 	}
 

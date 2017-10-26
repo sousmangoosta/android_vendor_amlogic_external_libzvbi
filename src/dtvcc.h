@@ -336,6 +336,8 @@ struct dtvcc_window {
 	/* EIA 708-C window state. */
 
 	uint16_t			buffer[16][42];
+	struct dtvcc_pen_style          pen[16][42];
+	int row_start[16];
 
 	vbi_bool			visible;
 
@@ -381,6 +383,9 @@ struct dtvcc_service {
 	/* Interpretation Layer. */
 
 	struct dtvcc_window		window[8];
+	struct dtvcc_window             old_window[8];
+
+	int                             old_win_cnt;
 	int                             update;
 
 	struct dtvcc_window *		curr_window;
@@ -474,6 +479,7 @@ struct tvcc_decoder {
 	struct cc_decoder cc;
 	struct dtvcc_decoder dtvcc;
 };
+unsigned int dtvcc_unicode (unsigned int c);
 
 extern void     tvcc_init(struct tvcc_decoder *td);
 
@@ -483,7 +489,7 @@ extern void     tvcc_reset(struct tvcc_decoder *td);
 
 extern void     tvcc_destroy(struct tvcc_decoder *td);
 
-extern void     tvcc_fetch_page(struct tvcc_decoder *td, int pgno, int *sub_cnt, struct vbi_page *sub_pages);
+extern void     tvcc_fetch_page(struct tvcc_decoder *td, int pgno, int *cnt, struct vbi_page *sub_pages);
 
 static void     dtvcc_init(struct dtvcc_decoder * dc);
 
@@ -496,6 +502,10 @@ extern void     cc_init(struct cc_decoder *cd);
 extern vbi_bool cc_feed(struct cc_decoder *cd, const uint8_t buffer[2], unsigned int line, const struct timeval * tv, int64_t pts);
 
 extern void     cc_reset(struct cc_decoder *cd);
+
+extern void     vbi_decode_caption(vbi_decoder *vbi, int line, const uint8_t *buf);
+
+extern int      get_input_offset();
 
 #endif
 
