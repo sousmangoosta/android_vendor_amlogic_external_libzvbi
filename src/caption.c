@@ -811,6 +811,8 @@ update(cc_channel *ch)
 	vbi_char *acp = ch->line - ch->pg[ch->hidden].text + ch->pg[ch->hidden^1].text;
 
 	memcpy(acp, ch->line, sizeof(*acp) * COLUMNS);
+
+	render(ch->pg + 1, ch->row);
 }
 
 static void
@@ -821,6 +823,7 @@ word_break(struct caption *cc, cc_channel *ch, int upd)
 	/*
 	 *  Add a leading and trailing space.
 	 */
+#if 0
 	if (ch->col > ch->col1) {
 		vbi_char c = ch->line[ch->col1];
 
@@ -838,7 +841,7 @@ word_break(struct caption *cc, cc_channel *ch, int upd)
 			ch->line[ch->col] = c;
 		}
 	}
-
+#endif
 	if (!upd || ch->mode == MODE_POP_ON)
 		return;
 
@@ -881,6 +884,7 @@ put_char(struct caption *cc, cc_channel *ch, vbi_char c)
 
 	if ((c.unicode & 0x7F) == 0x20)
 		word_break(cc, ch, 1);
+	update(ch);
 }
 
 static inline cc_channel *

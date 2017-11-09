@@ -2856,7 +2856,7 @@ dtvcc_define_window		(struct dtvcc_decoder *	dc,
 	pen_style_id = c & 7;
 
 	if (window_style_id > 0) {
-		dw->style = window_styles[window_style_id];
+		dw->style = window_styles[window_style_id-1];
 	} else if (0 == (ds->created & window_map)) {
 		dw->style = window_styles[1];
 	}
