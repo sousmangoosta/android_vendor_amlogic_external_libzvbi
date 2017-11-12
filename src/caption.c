@@ -35,6 +35,7 @@
 #include "tables.h"
 #include "vbi.h"
 #include <android/log.h>
+#include "am_debug.h"
 
 #define elements(array) (sizeof(array) / sizeof(array[0]))
 
@@ -808,11 +809,20 @@ roll_up(vbi_page *pg, int first_row, int last_row)
 static inline void
 update(cc_channel *ch)
 {
+#if 1
+int i;
 	vbi_char *acp = ch->line - ch->pg[ch->hidden].text + ch->pg[ch->hidden^1].text;
 
 	memcpy(acp, ch->line, sizeof(*acp) * COLUMNS);
-
 	render(ch->pg + 1, ch->row);
+#if 0
+	AM_DEBUG(1,"+++ Display line");
+	for (i=0;i<sizeof(*acp) * COLUMNS;i++)
+	{
+		AM_DEBUG(1,"+++ %x ", ch->line[i].unicode);
+	}
+#endif
+#endif
 }
 
 static void
@@ -854,9 +864,7 @@ word_break(struct caption *cc, cc_channel *ch, int upd)
 	 *  XXX should not render if space follows space,
 	 *  but force in long words. 
 	 */
-
-	update(ch);
-	render(ch->pg + 1, ch->row);
+	ch->update = 1;
 }
 
 static inline void
@@ -881,10 +889,10 @@ put_char(struct caption *cc, cc_channel *ch, vbi_char c)
 
 		ch->line[COLUMNS - 2] = c;
 	}
-
-	if ((c.unicode & 0x7F) == 0x20)
-		word_break(cc, ch, 1);
-	update(ch);
+	ch->update = 1;
+	//if ((c.unicode & 0x7F) == 0x20)
+	//	word_break(cc, ch, 1);
+	//AM_DEBUG(1, "add render in putchar");
 }
 
 static inline cc_channel *
@@ -900,15 +908,18 @@ erase_memory(struct caption *cc, cc_channel *ch, int page)
 {
 	vbi_page *pg = ch->pg + page;
 	vbi_char *acp = pg->text;
-	vbi_char c = cc->transp_space[ch >= &cc->channel[4]];
+	memset(pg->text, 0, 1056*sizeof(vbi_char));
+#if 0
+	//vbi_char c = cc->transp_space[ch >= &cc->channel[4]];
+	vbi_char c = {0};
 	int i,j;
-
 	for (i = 0; i < COLUMNS * ROWS; acp++, i++)
 		*acp = c;
 
 	pg->dirty.y0 = 0;
 	pg->dirty.y1 = ROWS - 1;
 	pg->dirty.roll = ROWS;
+#endif
 }
 
 static const vbi_color
@@ -1159,7 +1170,7 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 					.text[ch->row1 * COLUMNS];
 
 				word_break(cc, ch, 1);
-				update(ch);
+				ch->update = 1;
 
 				if (ch->mode == MODE_ROLL_UP)
                 {
@@ -1170,7 +1181,7 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
                 }
 
 				if (ch->mode != MODE_POP_ON) {
-					update(ch);
+					ch->update = 1;
 					roll_up(ch->pg + (ch->hidden ^ 1), ch->row1, last_row);
 				}
 
@@ -1190,7 +1201,7 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 			word_break(cc, ch, 0);
 
 			if (ch->mode != MODE_POP_ON) {
-				update(ch);
+				ch->update = 1;
 				render(ch->pg + (ch->hidden ^ 1), ch->row);
 			}
 
@@ -1295,7 +1306,7 @@ vbi_decode_caption(vbi_decoder *vbi, int line, uint8_t *buf)
 	int field2 = 1, i;
 
 	pthread_mutex_lock(&cc->mutex);
-
+	AM_DEBUG(1, "vbi_data: line: %d %x %x", line, buf[0], buf[1]);
 	switch (line) {
 	case 21:	/* NTSC */
 	case 22:	/* PAL */
@@ -1386,6 +1397,10 @@ vbi_decode_caption(vbi_decoder *vbi, int line, uint8_t *buf)
 			putchar(_vbi_to_ascii (buf[1]));
 			fflush(stdout);
 		)
+#if 0
+		AM_DEBUG(1, "text value: %c %c %x %x", _vbi_to_ascii(buf[0]),
+			_vbi_to_ascii(buf[1]), buf[0], buf[1]);
+#endif
 
 		ch = &cc->channel[(cc->curr_chan & 5) + field2 * 2];
 
@@ -1424,6 +1439,12 @@ vbi_decode_caption(vbi_decoder *vbi, int line, uint8_t *buf)
 
 			put_char(cc, ch, c);
 		}
+	}
+	for (i=0; i<8; i++)
+	{
+		if (cc->channel[i].update == 1)
+		update(&cc->channel[i]);
+		cc->channel[i].update = 0;
 	}
 
  finish:

@@ -64,6 +64,7 @@ typedef struct {
 
 	int			hidden;
 	vbi_page		pg[2];
+	int update;
 } cc_channel;
 
 struct caption {

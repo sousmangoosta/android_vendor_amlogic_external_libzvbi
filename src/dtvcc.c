@@ -33,6 +33,7 @@
 
 #include "libzvbi.h"
 #include "dtvcc.h"
+#include "am_debug.h"
 
 #define elements(array) (sizeof(array) / sizeof(array[0]))
 
@@ -50,7 +51,6 @@
 
 #define N_ELEMENTS(array) (sizeof (array) / sizeof ((array)[0]))
 #define CLEAR(var) memset (&(var), 0, sizeof (var))
-
 /* FIXME __typeof__ is a GCC extension. */
 #undef SWAP
 #define SWAP(x, y)							\
@@ -2149,6 +2149,7 @@ dtvcc_g2 [96] = {
 	0x2022,
 	0,
 	0,
+	0,
 	0x2122, /* 0x1039 Trademark sign */
 	0x0161, /* 0x103A s with caron */
 	0,
@@ -2446,7 +2447,7 @@ dtvcc_put_char			(struct dtvcc_decoder *	dc,
 {
 	struct dtvcc_window *dw;
 	unsigned int row;
-	unsigned int column;
+	unsigned int column,i;
 
 	dc = dc; /* unused */
 
@@ -2466,6 +2467,8 @@ dtvcc_put_char			(struct dtvcc_decoder *	dc,
 
 	dw->buffer[row][column] = c;
 	dw->pen[row][column]    = dw->curr_pen.style;
+	if (dw->visible)
+		dtvcc_render(dc, ds);
 
 	switch (dw->style.print_direction) {
 	case DIR_LEFT_RIGHT:
@@ -2504,8 +2507,6 @@ dtvcc_put_char			(struct dtvcc_decoder *	dc,
 	dw->curr_row = row;
 	dw->curr_column = column;
 
-	if (dw->visible)
-		dtvcc_render(dc, ds);
 
 	return TRUE;
 }
@@ -2604,10 +2605,12 @@ dtvcc_set_pen_attributes	(struct dtvcc_service *	ds,
 	c = buf[1];
 	offset = (c >> 2) & 3;
 	pen_size = c & 3;
+	//TODO: why not larger than 3
+	/*
 	if ((offset | pen_size) >= 3) {
 		ds->error_line = __LINE__;
 		return FALSE;
-	}
+	} */
 
 	c = buf[2];
 	edge_type = (c >> 3) & 7;
@@ -2896,8 +2899,6 @@ dtvcc_display_windows		(struct dtvcc_decoder *	dc,
 	unsigned int i;
 
 	window_map &= ds->created;
-
-	//printf("display %02x %p %02x\n", c, ds->curr_window, ds->created);
 
 	if(ds->curr_window == NULL && ds->created == 0) {
 		return FALSE;
@@ -3188,7 +3189,6 @@ dtvcc_delete_windows		(struct dtvcc_decoder *	dc,
 
 		if (NULL != dw) {
 			unsigned int window_id;
-
 			window_id = dtvcc_window_id (ds, dw);
 			if (ds->created & (1 << window_id)) {
 				if (window_map & (1 << window_id)) {
@@ -3235,10 +3235,8 @@ dtvcc_command			(struct dtvcc_decoder *	dc,
 
 	if (*se_length > n_bytes) {
 		ds->error_line = __LINE__;
-		//return FALSE;
 		return TRUE;
 	}
-
 	switch (c) {
 	case 0x08: /* BS Backspace */
 		return dtvcc_backspace (dc, ds);
@@ -3372,13 +3370,12 @@ dtvcc_decode_syntactic_elements	(struct dtvcc_decoder *	dc,
 	ds->timestamp = dc->timestamp;
 
 #if 0
-	printf("servie %d\n", n_bytes);
+	AM_DEBUG(1, "+++++++++++++++++++++ servie %d\n", n_bytes);
 	{
 		int i;
 
 		for (i = 0; i < n_bytes; i ++)
-			printf("%02x ", buf[i]);
-		printf("\n");
+			AM_DEBUG(1, "++++++++++++++ %02x ", buf[i]);
 	}
 #endif
 	while (n_bytes > 0) {
@@ -3397,7 +3394,6 @@ dtvcc_decode_syntactic_elements	(struct dtvcc_decoder *	dc,
 		if (!dtvcc_decode_se (dc, ds,
 				      &se_length,
 				      buf, n_bytes)) {
-			//printf("decode se error\n");
 			return FALSE;
 		}
 
@@ -3432,14 +3428,13 @@ dtvcc_decode_packet		(struct dtvcc_decoder *	dc,
 
 	/* sequence_number [2], packet_size_code [6],
 	   packet_data [n * 8] */
-
+#if 1
 	if (dc->next_sequence_number >= 0
 	    && 0 != ((dc->packet[0] ^ dc->next_sequence_number) & 0xC0)) {
-		printf("seq reset\n");
 		dtvcc_reset (dc);
 		return;
 	}
-
+#endif
 	dc->next_sequence_number = dc->packet[0] + 0x40;
 
 	packet_size_code = dc->packet[0] & 0x3F;
@@ -3453,6 +3448,7 @@ dtvcc_decode_packet		(struct dtvcc_decoder *	dc,
 		/*
 		dtvcc_reset (dc);
 		return;*/
+		//AM_DEBUG(1, "packet size larger than dc packet_size");
 		packet_size = dc->packet_size;
 	}
 
@@ -3511,7 +3507,9 @@ dtvcc_decode_packet		(struct dtvcc_decoder *	dc,
 		//printf("srv %d %d %d %d\n", service_number, header_size, block_size, packet_size);
 
 		if (i + header_size + block_size > packet_size)
+		{
 			break;
+		}
 			//goto service_block_incomplete;
 
 		if (service_number <= 6) {
@@ -3529,7 +3527,6 @@ dtvcc_decode_packet		(struct dtvcc_decoder *	dc,
 		i += header_size + block_size;
 	}
 
-	//printf("check\n");
 	for (i = 0; i < 6; ++i) {
 		struct dtvcc_service *ds;
 		struct program *pr;
@@ -3579,6 +3576,7 @@ dtvcc_try_decode_packet		(struct dtvcc_decoder *	dc,
 		return;
 
 	packet_size_code = dc->packet[0] & 0x3F;
+
 	packet_size = 128;
 	if (packet_size_code > 0)
 		packet_size = packet_size_code * 2;
@@ -3603,7 +3601,6 @@ dtvcc_reset			(struct dtvcc_decoder *	dc)
 {
 	dtvcc_reset_service (&dc->service[0]);
 	dtvcc_reset_service (&dc->service[1]);
-
 	dc->packet_size = 0;
 	dc->next_sequence_number = -1;
 }
@@ -3783,7 +3780,9 @@ tvcc_decode_data			(struct tvcc_decoder *td,
 		return;
 	process_cc_data_flag = buf[1] & 0x40;
 	if (!process_cc_data_flag)
+	{
 		return;
+	}
 
 	cc_count = buf[1] & 0x1F;
 	dtvcc = FALSE;
@@ -3844,7 +3843,7 @@ tvcc_decode_data			(struct tvcc_decoder *td,
 
 		case DTVCC_DATA:
 			j = td->dtvcc.packet_size;
-			//printf("atsc data %d %d %02x %02x\n", j, cc_valid, cc_data_1, cc_data_2);
+			//AM_DEBUG(1, "ccdata ========== atsc data packet_size %d valid:%d type: %x data1:%x data2:%x\n", j, cc_valid, cc_type, cc_data_1, cc_data_2);
 			if (j <= 0) {
 				/* Missed packet start. */
 				break;
@@ -3866,7 +3865,6 @@ tvcc_decode_data			(struct tvcc_decoder *td,
 		case DTVCC_START:
 			dtvcc = TRUE;
 			j = td->dtvcc.packet_size;
-			//printf("atsc start %d %d %02x %02x\n", j, cc_valid, cc_data_1, cc_data_2);
 			if (j > 0) {
 				/* End of DTVCC packet. */
 				dtvcc_decode_packet (&td->dtvcc,
@@ -3901,7 +3899,6 @@ tvcc_decode_data			(struct tvcc_decoder *td,
 				pthread_mutex_unlock(&td->mutex);
 
 				vbi_send_event(td->vbi, &event);
-
 				pthread_mutex_lock(&td->mutex);
 
 				ds->update = 0;
