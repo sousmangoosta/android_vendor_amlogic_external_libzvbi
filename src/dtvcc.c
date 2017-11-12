@@ -2457,6 +2457,7 @@ dtvcc_put_char			(struct dtvcc_decoder *	dc,
 
 	if (NULL == dw) {
 		ds->error_line = __LINE__;
+		//AM_DEBUG(1, "================ window null !!!!!");
 		return FALSE;
 	}
 
@@ -2467,6 +2468,7 @@ dtvcc_put_char			(struct dtvcc_decoder *	dc,
 
 	dw->buffer[row][column] = c;
 	dw->pen[row][column]    = dw->curr_pen.style;
+	//AM_DEBUG(1, "========= putchar %x %c", c, c);
 	if (dw->visible)
 		dtvcc_render(dc, ds);
 
@@ -2900,6 +2902,7 @@ dtvcc_display_windows		(struct dtvcc_decoder *	dc,
 
 	window_map &= ds->created;
 
+	//printf("display %02x %p %02x\n", c, ds->curr_window, ds->created);
 	if(ds->curr_window == NULL && ds->created == 0) {
 		return FALSE;
 		//return TRUE;
@@ -3448,7 +3451,6 @@ dtvcc_decode_packet		(struct dtvcc_decoder *	dc,
 		/*
 		dtvcc_reset (dc);
 		return;*/
-		//AM_DEBUG(1, "packet size larger than dc packet_size");
 		packet_size = dc->packet_size;
 	}
 
@@ -3843,7 +3845,6 @@ tvcc_decode_data			(struct tvcc_decoder *td,
 
 		case DTVCC_DATA:
 			j = td->dtvcc.packet_size;
-			//AM_DEBUG(1, "ccdata ========== atsc data packet_size %d valid:%d type: %x data1:%x data2:%x\n", j, cc_valid, cc_type, cc_data_1, cc_data_2);
 			if (j <= 0) {
 				/* Missed packet start. */
 				break;
