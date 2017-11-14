@@ -1349,9 +1349,13 @@ vbi_decode_caption(vbi_decoder *vbi, int line, uint8_t *buf)
 
 	//if ( (buf[0]) < 0) {  //vbi_unpar8 (buf[0]) < 0
 	if ( vbi_unpar8 (buf[0])  < 0) {  //
+#if 0
 		c1 = 127;
 		buf[0] = c1; /* traditional 'bad' glyph, ccfont has */
 		buf[1] = c1; /*  room, design a special glyph? */
+#else
+		goto finish;
+#endif
 	}
 
 	CC_DUMP(
