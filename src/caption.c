@@ -999,7 +999,7 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 				ch->attr.foreground = palette_mapping[c2];
 			} else {
 				ch->attr.italic = TRUE;
-				ch->attr.foreground = VBI_WHITE;
+				//ch->attr.foreground = VBI_WHITE;
 			}
 		}
 
