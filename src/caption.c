@@ -308,7 +308,7 @@ xds_decoder(vbi_decoder *vbi, int _class, int type,
 				dlsv |= VBI_RATING_V;
 
 			if ((buffer[0] & 0x08) == 0) {
-				if (r == 0) return;
+				//if (r == 0) return;
 				auth = VBI_RATING_AUTH_MPAA;
 				pi->rating.dlsv = dlsv = 0;
 			} else if ((buffer[0] & 0x10) == 0) {
