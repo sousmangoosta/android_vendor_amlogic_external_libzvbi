@@ -14,8 +14,8 @@
  *  Library General Public License for more details.
  *
  *  You should have received a copy of the GNU Library General Public
- *  License along with this library; if not, write to the 
- *  Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, 
+ *  License along with this library; if not, write to the
+ *  Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  *  Boston, MA  02110-1301  USA.
  */
 
@@ -80,8 +80,8 @@ static const char *
 language[8] = {
 	"Unknown",
 	"English",
-	"Español",
-	"Français",
+	"EspaÃ±ol",
+	"FranÃ§ais",
 	"Deutsch",
 	"Italiano",
 	"Other",
@@ -133,7 +133,7 @@ xds_strfu(signed char *d, const uint8_t *s, int len)
 	return neq;
 }
 
-#define xds_intfu(d, val) (neq |= d ^ (val), d = (val)) 
+#define xds_intfu(d, val) (neq |= d ^ (val), d = (val))
 
 static void
 flush_prog_info(vbi_decoder *vbi, vbi_program_info *pi, vbi_event *e)
@@ -165,7 +165,7 @@ xds_decoder(vbi_decoder *vbi, int _class, int type,
 // XXX we have no indication how long the program info applies.
 //     It will be canceled on channel switch, but who knows
 //     what the station transmits when the next program starts.
-//     (Nothing, possibly.) A timeout seems necessary. 
+//     (Nothing, possibly.) A timeout seems necessary.
 
 	switch (_class) {
 	case XDS_CURRENT: /* 0 */
@@ -489,7 +489,7 @@ xds_decoder(vbi_decoder *vbi, int _class, int type,
 		}
 		else if (vbi->cc.info_cycle[_class] & (1 << type)) {
 			/* Second occurance of this type with same data */
-			
+
 			e.type = VBI_EVENT_PROG_INFO;
 			e.ev.prog_info = pi;
 
@@ -862,7 +862,7 @@ word_break(struct caption *cc, cc_channel *ch, int upd)
 	 *  for double buffering at word granularity.
 	 *
 	 *  XXX should not render if space follows space,
-	 *  but force in long words. 
+	 *  but force in long words.
 	 */
 	ch->update = 1;
 }
@@ -1045,7 +1045,7 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 				ch->attr.foreground = palette_mapping[c2];
 			} else {
 				ch->attr.italic = TRUE;
-				ch->attr.foreground = VBI_WHITE;
+				//ch->attr.foreground = VBI_WHITE;
 			}
 		}
 
@@ -1141,11 +1141,33 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 
 		case 1:		/* Backspace			001 c10f  010 0001 */
 // not verified
-			if (ch->mode && ch->col > 1) {
-				ch->line[--ch->col] = cc->transp_space[chan >> 2];
+			if (ch->mode) {
+				if (ch->col > 1) {
+					ch->col --;
+				} else if (ch->row > 1) {
+					vbi_char *acp;
 
+					ch->row --;
+					ch->line = ch->pg[ch->hidden].text + ch->row * COLUMNS;
+					ch->col1 = 1;
+					ch->col  = COLUMNS - 1;
+					acp = ch->line + COLUMNS - 1;
+
+					while (ch->col > 0) {
+						if (acp->unicode != 0)
+						break;
+
+						acp --;
+						ch->col --;
+					}
+				} else {
+					return;
+				}
+
+				memset(&ch->line[ch->col], 0, sizeof(vbi_char));
 				if (ch->col < ch->col1)
 					ch->col1 = ch->col;
+				ch->update = 1;
 			}
 
 			return;
@@ -1219,18 +1241,18 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 					erase_memory(cc, ch, 1);
 				}
 			}
-			else 
+			else
 			{
-			
+
 				if (ch->mode != MODE_POP_ON)
 					erase_memory(cc, ch, ch->hidden);
-			
+
 				erase_memory(cc, ch, ch->hidden ^ 1);
-			
-			
+
+
 				clear(ch->pg + (ch->hidden ^ 1));
 			}
-			
+
 			return;
 		case 14:	/* Erase Non-Displayed Memory	001 c10f  010 1110 */
 // not verified
@@ -1293,7 +1315,7 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
  * @param vbi Initialized vbi decoding context.
  * @param line ITU-R line number this data originated from.
  * @param buf Two bytes.
- * 
+ *
  * Decode two bytes of Closed Caption data (Caption, XDS, ITV),
  * updating the decoder state accordingly. May send events.
  */
@@ -1340,7 +1362,7 @@ vbi_decode_caption(vbi_decoder *vbi, int line, uint8_t *buf)
 			xds_separator(vbi, buf);
 			goto finish;
 		}
- 
+
 		break;
 
 	default:
@@ -1375,7 +1397,7 @@ vbi_decode_caption(vbi_decoder *vbi, int line, uint8_t *buf)
 
 	case 0x10 ... 0x1F:
 		//if ( (buf[1]) >= 0) {  // vbi_unpar8 (buf[1])
-		if ( vbi_unpar8 (buf[1]) >= 0) {  
+		if ( vbi_unpar8 (buf[1]) >= 0) {
 			if (!field2
 			    && buf[0] == cc->last[0]
 			    && buf[1] == cc->last[1]) {
@@ -1432,7 +1454,7 @@ vbi_decode_caption(vbi_decoder *vbi, int line, uint8_t *buf)
 
 		for (i = 0; i < 2; i++) {
 			//char ci =  (buf[i]) & 0x7F; /* 127 if bad */    //vbi_unpar8 (buf[i])
-			char ci =  vbi_unpar8 (buf[i]) & 0x7F;      /* 127 if bad */  
+			char ci =  vbi_unpar8 (buf[i]) & 0x7F;      /* 127 if bad */
 			if (ci <= 0x1F) /* 0x00 no char, 0x01 ... 0x1F invalid */
 				continue;
 
@@ -1457,8 +1479,8 @@ vbi_decode_caption(vbi_decoder *vbi, int line, uint8_t *buf)
 
 /**
  * @internal
- * @param vbi Initialized vbi decoding context. 
- * 
+ * @param vbi Initialized vbi decoding context.
+ *
  * This function must be called after desynchronisation
  * has been detected (i. e. vbi data has been lost)
  * to reset the Closed Caption decoder.
@@ -1483,7 +1505,7 @@ vbi_caption_desync(vbi_decoder *vbi)
 /**
  * @internal
  * @param vbi Initialized vbi decoding context.
- * 
+ *
  * This function must be called after a channel switch,
  * to reset the Closed Caption decoder.
  */
@@ -1540,7 +1562,7 @@ vbi_caption_channel_switched(vbi_decoder *vbi)
 static vbi_rgba
 default_color_map[8] = {
 	VBI_RGBA(0x00, 0x00, 0x00), VBI_RGBA(0xFF, 0x00, 0x00),
-	VBI_RGBA(0x00, 0xFF, 0x00), VBI_RGBA(0xFF, 0xFF, 0x00),	
+	VBI_RGBA(0x00, 0xFF, 0x00), VBI_RGBA(0xFF, 0xFF, 0x00),
 	VBI_RGBA(0x00, 0x00, 0xFF), VBI_RGBA(0xFF, 0x00, 0xFF),
 	VBI_RGBA(0x00, 0xFF, 0xFF), VBI_RGBA(0xFF, 0xFF, 0xFF)
 };
@@ -1548,7 +1570,7 @@ default_color_map[8] = {
 /**
  * @internal
  * @param vbi Initialized vbi decoding context.
- * 
+ *
  * After the client changed text brightness and saturation
  * this function adjusts the Closed Caption color palette.
  */
@@ -1569,7 +1591,7 @@ vbi_caption_color_level(vbi_decoder *vbi)
 /**
  * @internal
  * @param vbi VBI decoding context.
- * 
+ *
  * This function is called during @a vbi destruction
  * to destroy Closed Caption subset of @a vbi.
  */
@@ -1582,7 +1604,7 @@ vbi_caption_destroy(vbi_decoder *vbi)
 /**
  * @internal
  * @param vbi VBI decoding context.
- * 
+ *
  * This function is called during @a vbi initialization
  * to initialize the Closed Caption subset of @a vbi.
  */
@@ -1638,7 +1660,7 @@ vbi_caption_init(vbi_decoder *vbi)
  * @param reset @c TRUE resets the vbi_page dirty fields in cache after
  *   fetching. Pass @c FALSE only if you plan to call this function again
  *   to update other displays.
- * 
+ *
  * Fetches a Closed Caption page designated by @a pgno from the cache,
  * formats and stores it in @a pg. CC pages are transmitted basically in
  * two modes: at once and character by character ("roll-up" mode).
@@ -1648,11 +1670,11 @@ vbi_caption_init(vbi_decoder *vbi)
  * (in case of "roll-up" mode that is with each new word received)
  * and the vbi_page->dirty fields will mark the lines actually in
  * need of updates, to speed up rendering.
- * 
+ *
  * Although safe to do, this function is not supposed to be
  * called from an event handler, since rendering may block decoding
  * for extended periods of time.
- * 
+ *
  * @return
  * @c FALSE if some error occured.
  */
