@@ -71,8 +71,13 @@ struct caption {
 	pthread_mutex_t		mutex;
 
 	uint8_t			last[2];		/* field 1, cc command repetition */
+	uint8_t                 last_f1[2];
+	uint8_t                 last_f2[2];
 
 	int			curr_chan;
+	int                     curr_chan_f1;
+	int                     curr_chan_f2;
+
 	vbi_char		transp_space[2];	/* caption, text mode */
 	cc_channel		channel[9];		/* caption 1-4, text 1-4, garbage */
 

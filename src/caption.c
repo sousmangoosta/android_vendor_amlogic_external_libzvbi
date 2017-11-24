@@ -908,7 +908,7 @@ erase_memory(struct caption *cc, cc_channel *ch, int page)
 {
 	vbi_page *pg = ch->pg + page;
 	vbi_char *acp = pg->text;
-	memset(pg->text, 0, 1056*sizeof(vbi_char));
+	memset(pg->text, 0, sizeof(pg->text));
 #if 0
 	//vbi_char c = cc->transp_space[ch >= &cc->channel[4]];
 	vbi_char c = {0};
@@ -952,6 +952,7 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 
 	if (c2 >= 0x40) {	/* Preamble Address Codes  001 crrr  1ri xxxu */
 		int row = row_mapping[(c1 << 1) + ((c2 >> 5) & 1)];
+		int old_row = ch->row;
 
 		if (row < 0 || !ch->mode)
 			return;
@@ -980,6 +981,7 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 			set_cursor(ch, 1, row);
 
 		if (c2 & 0x10) {
+			/*
 			col = ch->col;
 
 			for (i = (c2 & 14) * 2; i > 0 && col < COLUMNS - 1; i--)
@@ -987,9 +989,14 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 
 			if (col > ch->col)
 				ch->col = ch->col1 = col;
+			*/
 
-			ch->attr.italic = FALSE;
-			ch->attr.foreground = VBI_WHITE;
+			ch->col = (c2 & 14) * 2 + 1;
+
+			if (old_row != ch->row) {
+				ch->attr.italic = FALSE;
+				ch->attr.foreground = VBI_WHITE;
+			}
 		} else {
 // not verified
 			c2 = (c2 >> 1) & 7;
@@ -1054,6 +1061,19 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 	case 2:		/* Optional Extended Characters	001 c01f  01x xxxx */
 	case 3:
 		/* Send specs to the maintainer of this code */
+		{
+			vbi_char c;
+
+			c = ch->attr;
+			c.unicode = vbi_caption_unicode((c1 << 8) | c2 | 0x1000, 0);
+
+			if (c.unicode) {
+				if (ch->col > 1)
+					ch->col --;
+
+				put_char(cc, ch, c);
+			}
+		}
 		return;
 
 	case 4:		/* Misc Control Codes		001 c10f  010 xxxx */
@@ -1104,6 +1124,8 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 
 		case 10:	/* Text Restart			001 c10f  010 1010 */
 // not verified
+			erase_memory(cc, ch, ch->hidden);
+			erase_memory(cc, ch, ch->hidden ^ 1);
 			ch = switch_channel(cc, ch, chan | 4);
 			set_cursor(ch, 1, 0);
 			return;
@@ -1143,8 +1165,10 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 // not verified
 			if (ch->mode) {
 				if (ch->col > 1) {
+					if (ch->line[ch->col - 1].unicode == 0)
+						return;
 					ch->col --;
-				} else if (ch->row > 1) {
+				} else if (ch->row > 0) {
 					vbi_char *acp;
 
 					ch->row --;
@@ -1153,9 +1177,9 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 					ch->col  = COLUMNS - 1;
 					acp = ch->line + COLUMNS - 1;
 
-					while (ch->col > 0) {
+					while (ch->col > 1) {
 						if (acp->unicode != 0)
-						break;
+						      break;
 
 						acp --;
 						ch->col --;
@@ -1194,13 +1218,12 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 				word_break(cc, ch, 1);
 				ch->update = 1;
 
-				if (ch->mode == MODE_ROLL_UP)
-                {
-                    memmove(acp, acp + COLUMNS, sizeof(*acp) * (ch->roll - 1) * COLUMNS);
-
-                    for (i = 0; i <= COLUMNS; i++)
-                        ch->line[i] = cc->transp_space[chan >> 2];
-                }
+				if (ch->mode == MODE_ROLL_UP) {
+					memmove(acp, acp + COLUMNS, sizeof(*acp) * (ch->roll - 1) * COLUMNS);
+					for (i = 0; i <= COLUMNS; i++) {
+						memset(&ch->line[i], 0, sizeof(vbi_char));
+					}
+				}
 
 				if (ch->mode != MODE_POP_ON) {
 					ch->update = 1;
@@ -1217,8 +1240,9 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 			if (!ch->mode)
 				return;
 
-			for (i = ch->col; i <= COLUMNS - 1; i++)
-				ch->line[i] = cc->transp_space[chan >> 2];
+			for (i = ch->col; i <= COLUMNS - 1; i++) {
+				memset(&ch->line[i], 0, sizeof(vbi_char));
+			}
 
 			word_break(cc, ch, 0);
 
@@ -1227,11 +1251,13 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 				render(ch->pg + (ch->hidden ^ 1), ch->row);
 			}
 
+			ch->update = 1;
 			return;
 
 		case 12:	/* Erase Displayed Memory	001 c10f  010 1100 */
 // s1, s4: EDM always before EOC
 			/* Received in text mode */
+			/*
 			if (cc->curr_chan >= 4)
 			{
 				for (i = 0; i < 2; i++ )
@@ -1251,14 +1277,23 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 
 
 				clear(ch->pg + (ch->hidden ^ 1));
-			}
+			}*/
 
+			if (cc->curr_chan < 4) {
+				erase_memory(cc, ch, ch->hidden);
+				erase_memory(cc, ch, ch->hidden ^ 1);
+				clear(ch->pg + (ch->hidden ^ 1));
+
+				ch->update = 1;
+			}
 			return;
 		case 14:	/* Erase Non-Displayed Memory	001 c10f  010 1110 */
 // not verified
-			if (ch->mode == MODE_POP_ON)
+			/*if (ch->mode == MODE_POP_ON)*/
 				erase_memory(cc, ch, ch->hidden);
 
+			//erase_memory(cc, ch, ch->hidden ^ 1);
+			//ch->update = 1;
 			return;
 		}
 
@@ -1273,13 +1308,18 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 		switch (c2) {
 		case 0x21 ... 0x23:	/* Misc Control Codes, Tabs	001 c111  010 00xx */
 // not verified
+			/*
 			col = ch->col;
 
 			for (i = c2 & 3; i > 0 && col < COLUMNS - 1; i--)
 				ch->line[col++] = cc->transp_space[chan >> 2];
 
 			if (col > ch->col)
-				ch->col = ch->col1 = col;
+				ch->col = ch->col1 = col;*/
+
+			ch->col += (c2 & 3);
+			if (ch->col >= COLUMNS)
+				ch->col = COLUMNS - 1;
 
 			return;
 
@@ -1329,6 +1369,15 @@ vbi_decode_caption(vbi_decoder *vbi, int line, uint8_t *buf)
 
 	pthread_mutex_lock(&cc->mutex);
 	AM_DEBUG(1, "vbi_data: line: %d %x %x", line, buf[0], buf[1]);
+
+	if (line == 21) {
+		cc->curr_chan = cc->curr_chan_f1;
+		memcpy(cc->last, cc->last_f1, sizeof(cc->last));
+	} else {
+		cc->curr_chan = cc->curr_chan_f2;
+		memcpy(cc->last, cc->last_f2, sizeof(cc->last));
+	}
+
 	switch (line) {
 	case 21:	/* NTSC */
 	case 22:	/* PAL */
@@ -1391,15 +1440,15 @@ vbi_decode_caption(vbi_decoder *vbi, int line, uint8_t *buf)
 		vbi_char c;
 
 	case 0x01 ... 0x0F:
-		if (!field2)
+		/*if (!field2)*/
 			cc->last[0] = 0;
 		break; /* XDS field 1?? */
 
 	case 0x10 ... 0x1F:
 		//if ( (buf[1]) >= 0) {  // vbi_unpar8 (buf[1])
 		if ( vbi_unpar8 (buf[1]) >= 0) {
-			if (!field2
-			    && buf[0] == cc->last[0]
+			if (/*!field2
+			    &&*/ buf[0] == cc->last[0]
 			    && buf[1] == cc->last[1]) {
 				/* cmd repetition F1: already executed */
 				cc->last[0] = 0; /* one rep */
@@ -1408,11 +1457,11 @@ vbi_decode_caption(vbi_decoder *vbi, int line, uint8_t *buf)
 
 			caption_command(vbi, cc, c1, buf[1] & 0x7F, field2);
 
-			if (!field2) {
+			/*if (!field2)*/ {
 				cc->last[0] = buf[0];
 				cc->last[1] = buf[1];
 			}
-		} else if (!field2)
+		} else /*if (!field2)*/
 			cc->last[0] = 0;
 
 		break;
@@ -1440,7 +1489,7 @@ vbi_decode_caption(vbi_decoder *vbi, int line, uint8_t *buf)
 			break;
 		}
 
-		if (!field2)
+		/*if (!field2)*/
 			cc->last[0] = 0;
 
 		ch->nul_ct = 0;
@@ -1471,6 +1520,14 @@ vbi_decode_caption(vbi_decoder *vbi, int line, uint8_t *buf)
 		if (cc->channel[i].update == 1)
 		update(&cc->channel[i]);
 		cc->channel[i].update = 0;
+	}
+
+	if (line == 21) {
+		cc->curr_chan_f1 = cc->curr_chan;
+		memcpy(cc->last_f1, cc->last, sizeof(cc->last));
+	} else {
+		cc->curr_chan_f2 = cc->curr_chan;
+		memcpy(cc->last_f2, cc->last, sizeof(cc->last));
 	}
 
  finish:
