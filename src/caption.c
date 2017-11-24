@@ -944,7 +944,6 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 	cc_channel *ch;
 	int chan, col, i;
 	int last_row;
-
 	chan = (cc->curr_chan & 4) + field2 * 2 + ((c1 >> 3) & 1);
 	ch = &cc->channel[chan];
 
@@ -1128,6 +1127,8 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 			erase_memory(cc, ch, ch->hidden ^ 1);
 			ch = switch_channel(cc, ch, chan | 4);
 			set_cursor(ch, 1, 0);
+			erase_memory(cc, ch, ch->hidden);
+			erase_memory(cc, ch, ch->hidden ^ 1);
 			return;
 
 		case 11:	/* Resume Text Display		001 c10f  010 1011 */
