@@ -399,6 +399,12 @@ struct dtvcc_service {
 
 	uint8_t				service_data[128];
 	unsigned int			service_data_in;
+	/* For 0x8D 0x8E delay command
+		if delay flag is set, decoder stop decoding
+		*/
+	struct timespec delay_timer;
+	int delay;
+	int delay_cancel;
 
 	/** The time when we last received data for this service. */
 	struct cc_timestamp		timestamp;

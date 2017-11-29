@@ -3220,6 +3220,45 @@ dtvcc_delete_windows		(struct dtvcc_decoder *	dc,
 }
 
 static vbi_bool
+dtvcc_delay_cmd (struct dtvcc_decoder *	dc,
+				 struct dtvcc_service *	ds,
+				 uint8_t delay_cmd,
+				 uint8_t	delay_time)
+{
+	struct timespec now_ts;
+	int plus_one_second = 0;
+	clock_gettime(CLOCK_REALTIME, &now_ts);
+	if(delay_cmd == 0x8D)
+	{
+		/* Set trigger time
+			Until that time, sevice stop decoding.
+			*/
+		/* Delay time is tenths of second */
+		/* We set the timer a little faster to avoid double delay conflict */
+		if((1000000000 - (delay_time%10) * 100000000) > now_ts.tv_nsec)
+		{
+			ds->delay_timer.tv_nsec = ((delay_time % 10) * 100000000 + now_ts.tv_nsec) % 1000000000;
+			ds->delay_timer.tv_sec = (1 + now_ts.tv_sec + delay_time/10) -1;
+		}
+		else
+		{
+			ds->delay_timer.tv_nsec = (delay_time % 10) * 100000000 + now_ts.tv_nsec;
+			ds->delay_timer.tv_sec = (now_ts.tv_sec + delay_time / 10) -1;
+		}
+		ds->delay_timer.tv_sec = now_ts.tv_sec + 1;
+		ds->delay = 1;
+		ds->delay_cancel = 0;
+		AM_DEBUG(1, "Enter delay cmd, now %d until %d", now_ts.tv_sec, ds->delay_timer.tv_sec);
+	}
+	else if(delay_cmd == 0x8E)
+	{
+		ds->delay = 0;
+		ds->delay_cancel = 1;
+	}
+	return TRUE;
+}
+
+static vbi_bool
 dtvcc_command			(struct dtvcc_decoder *	dc,
 				 struct dtvcc_service *	ds,
 				 unsigned int *		se_length,
@@ -3267,6 +3306,14 @@ dtvcc_command			(struct dtvcc_decoder *	dc,
 
 	case 0x89: /* DSW DisplayWindows */
 		return dtvcc_display_windows (dc, ds, c, buf[1]);
+
+	case 0x8D:
+		dtvcc_delay_cmd(dc, ds, 0x8d, buf[1]);
+		return 0;
+
+	case 0x8E:
+		dtvcc_delay_cmd(dc, ds, 0x8e, buf[1]);
+		return 0;
 
 	case 0x8A: /* HDW HideWindows */
 		return dtvcc_display_windows (dc, ds, c, buf[1]);
@@ -3371,6 +3418,7 @@ dtvcc_decode_syntactic_elements	(struct dtvcc_decoder *	dc,
 				 unsigned int		n_bytes)
 {
 	ds->timestamp = dc->timestamp;
+	struct timespec ts_now;
 
 #if 0
 	AM_DEBUG(1, "+++++++++++++++++++++ servie %d\n", n_bytes);
@@ -3383,15 +3431,7 @@ dtvcc_decode_syntactic_elements	(struct dtvcc_decoder *	dc,
 #endif
 	while (n_bytes > 0) {
 		unsigned int se_length;
-
-		if (0x8D /* DLY */ == *buf
-		    || 0x8E /* DLC */ == *buf) {
-			/* FIXME ignored for now. */
-			++buf;
-			--n_bytes;
-			continue;
-		}
-
+		
 		//printf("dec se %02x\n", buf[0]);
 
 		if (!dtvcc_decode_se (dc, ds,
@@ -3537,15 +3577,22 @@ dtvcc_decode_packet		(struct dtvcc_decoder *	dc,
 		ds = &dc->service[i];
 		if (0 == ds->service_data_in)
 			continue;
+		if(!ds->delay ||
+			(ds->delay && ds->service_data_in>=128))
+		{
+			AM_DEBUG(1, "service datain %d", ds->service_data_in);
+			success = dtvcc_decode_syntactic_elements
+				(dc, ds, ds->service_data, ds->service_data_in);
+			if(ds->service_data_in>=128)
+			{
+				ds->delay = 0;
+				ds->delay_cancel = 0;
+			}
+			ds->service_data_in = 0;
 
-		success = dtvcc_decode_syntactic_elements
-			(dc, ds, ds->service_data, ds->service_data_in);
-
-		ds->service_data_in = 0;
-
-		if (success)
-			continue;
-
+			if (success)
+				continue;
+		}
 		//dtvcc_reset_service (ds);
 		dc->next_sequence_number = -1;
 	}
@@ -3594,6 +3641,8 @@ dtvcc_reset_service		(struct dtvcc_service *	ds)
 {
 	ds->curr_window = NULL;
 	ds->created = 0;
+	ds->delay = 0;
+	ds->delay_cancel = 0;
 
 	cc_timestamp_reset (&ds->timestamp);
 }
@@ -3899,15 +3948,77 @@ tvcc_decode_data			(struct tvcc_decoder *td,
 				/* Permits calling tvcc_fetch_page from handler */
 				pthread_mutex_unlock(&td->mutex);
 
-				vbi_send_event(td->vbi, &event);
-				pthread_mutex_lock(&td->mutex);
+                vbi_send_event(td->vbi, &event);
+                pthread_mutex_lock(&td->mutex);
 
-				ds->update = 0;
-			}
-		}
-	}
+                ds->update = 0;
+            }
+        }
+    }
 
-	pthread_mutex_unlock(&td->mutex);
+    pthread_mutex_unlock(&td->mutex);
+}
+
+/* Only handle effect */
+void update_service_status(struct tvcc_decoder *td)
+{
+	int i;
+	struct timespec ts_now;
+	struct dtvcc_decoder *decoder;
+	decoder = &td->dtvcc;
+	pthread_mutex_lock(&td->mutex);
+	/* CS1 - CS6 */
+    for (i = 0; i < 6; ++i) {
+        struct dtvcc_service *ds;
+        struct program *pr;
+        vbi_bool success;
+
+        ds = &decoder->service[i];
+		/* Check every effect */
+#if 1
+		if(ds->delay)
+		{
+            struct vbi_event event;
+			/* time is up */
+			clock_gettime(CLOCK_REALTIME, &ts_now);
+			if((ts_now.tv_sec > ds->delay_timer.tv_sec) || 
+			((ts_now.tv_sec == ds->delay_timer.tv_sec) &&(ts_now.tv_nsec > ds->delay_timer.tv_nsec)) ||
+			ds->delay_cancel)
+			{
+				AM_DEBUG(1, "delay timeup");
+				ds->delay = 0;
+				ds->delay_cancel = 0;
+				dtvcc_decode_syntactic_elements
+					(decoder, ds, ds->service_data, ds->service_data_in);
+
+				ds->service_data_in = 0;
+            }
+        }
+#endif
+    }
+    {
+		int i;
+
+		for (i = 0; i < N_ELEMENTS(td->dtvcc.service); i ++) {
+			struct dtvcc_service *ds = &td->dtvcc.service[i];
+
+			if (ds->update) {
+				struct vbi_event event;
+
+				event.type = VBI_EVENT_CAPTION;
+				event.ev.caption.pgno = i + 1 + 8/*after 8 cc channels*/;
+
+				/* Permits calling tvcc_fetch_page from handler */
+				pthread_mutex_unlock(&td->mutex);
+
+                vbi_send_event(td->vbi, &event);
+                pthread_mutex_lock(&td->mutex);
+
+                ds->update = 0;
+            }
+        }
+    }
+    pthread_mutex_unlock(&td->mutex);
 }
 
 void tvcc_init(struct tvcc_decoder *td)
