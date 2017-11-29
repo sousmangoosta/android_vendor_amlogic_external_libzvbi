@@ -3546,7 +3546,7 @@ dtvcc_decode_packet		(struct dtvcc_decoder *	dc,
 		if (success)
 			continue;
 
-		dtvcc_reset_service (ds);
+		//dtvcc_reset_service (ds);
 		dc->next_sequence_number = -1;
 	}
 
