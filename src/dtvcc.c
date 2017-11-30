@@ -2071,7 +2071,7 @@ static int webtv_check(struct caption_recorder *cr, char * buf,int len)
 	}
 	sprintf(temp,"%04X\n",(int)~sum&0xffff);
 	buf++;
-	if(!strncmp(buf,temp,4))
+	if (!strncmp(buf,temp,4))
 	{
 		buf[5]=0;
 		if (cr->cur_ch[cr->field] >= 0 && cr->cc_fp[cr->cur_ch[cr->field]]) {
@@ -2581,9 +2581,11 @@ dtvcc_set_pen_color		(struct dtvcc_service *	ds,
 	c = buf[1];
 	dw->curr_pen.style.fg_opacity = c >> 6;
 	dw->curr_pen.style.fg_color = c & 0x3F;
+	dw->curr_pen.style.fg_flash = ((c>>6)==1)?1:0;
 	c = buf[2];
 	dw->curr_pen.style.bg_opacity = c >> 6;
 	dw->curr_pen.style.bg_color = c & 0x3F;
+	dw->curr_pen.style.bg_flash = ((c>>6)==1)?1:0;
 
 	return TRUE;
 }
@@ -2660,6 +2662,7 @@ dtvcc_set_window_attributes	(struct dtvcc_service *	ds,
 	c = buf[1];
 	dw->style.fill_opacity = c >> 6;
 	dw->style.fill_color = c & 0x3F;
+	dw->style.window_flash = ((c>>6)==1)?1:0;
 	c = buf[2];
 	dw->style.border_type = border_type;
 	dw->style.border_color = c & 0x3F;
@@ -2903,7 +2906,7 @@ dtvcc_display_windows		(struct dtvcc_decoder *	dc,
 	window_map &= ds->created;
 
 	//printf("display %02x %p %02x\n", c, ds->curr_window, ds->created);
-	if(ds->curr_window == NULL && ds->created == 0) {
+	if (ds->curr_window == NULL && ds->created == 0) {
 		return FALSE;
 		//return TRUE;
 	}
@@ -3228,14 +3231,14 @@ dtvcc_delay_cmd (struct dtvcc_decoder *	dc,
 	struct timespec now_ts;
 	int plus_one_second = 0;
 	clock_gettime(CLOCK_REALTIME, &now_ts);
-	if(delay_cmd == 0x8D)
+	if (delay_cmd == 0x8D)
 	{
 		/* Set trigger time
 			Until that time, sevice stop decoding.
 			*/
 		/* Delay time is tenths of second */
 		/* We set the timer a little faster to avoid double delay conflict */
-		if((1000000000 - (delay_time%10) * 100000000) > now_ts.tv_nsec)
+		if ((1000000000 - (delay_time%10) * 100000000) > now_ts.tv_nsec)
 		{
 			ds->delay_timer.tv_nsec = ((delay_time % 10) * 100000000 + now_ts.tv_nsec) % 1000000000;
 			ds->delay_timer.tv_sec = (1 + now_ts.tv_sec + delay_time/10) -1;
@@ -3250,7 +3253,7 @@ dtvcc_delay_cmd (struct dtvcc_decoder *	dc,
 		ds->delay_cancel = 0;
 		AM_DEBUG(1, "Enter delay cmd, now %d until %d", now_ts.tv_sec, ds->delay_timer.tv_sec);
 	}
-	else if(delay_cmd == 0x8E)
+	else if (delay_cmd == 0x8E)
 	{
 		ds->delay = 0;
 		ds->delay_cancel = 1;
@@ -3577,13 +3580,13 @@ dtvcc_decode_packet		(struct dtvcc_decoder *	dc,
 		ds = &dc->service[i];
 		if (0 == ds->service_data_in)
 			continue;
-		if(!ds->delay ||
+		if (!ds->delay ||
 			(ds->delay && ds->service_data_in>=128))
 		{
 			AM_DEBUG(1, "service datain %d", ds->service_data_in);
 			success = dtvcc_decode_syntactic_elements
 				(dc, ds, ds->service_data, ds->service_data_in);
-			if(ds->service_data_in>=128)
+			if (ds->service_data_in >= 128)
 			{
 				ds->delay = 0;
 				ds->delay_cancel = 0;
@@ -3962,26 +3965,25 @@ tvcc_decode_data			(struct tvcc_decoder *td,
 /* Only handle effect */
 void update_service_status(struct tvcc_decoder *td)
 {
-	int i;
+	int i, j, k, l;
 	struct timespec ts_now;
 	struct dtvcc_decoder *decoder;
+	struct dtvcc_pen_style *target_pen;
 	decoder = &td->dtvcc;
+	clock_gettime(CLOCK_REALTIME, &ts_now);
 	pthread_mutex_lock(&td->mutex);
 	/* CS1 - CS6 */
     for (i = 0; i < 6; ++i) {
         struct dtvcc_service *ds;
         struct program *pr;
         vbi_bool success;
-
         ds = &decoder->service[i];
 		/* Check every effect */
-#if 1
-		if(ds->delay)
+		if (ds->delay)
 		{
             struct vbi_event event;
 			/* time is up */
-			clock_gettime(CLOCK_REALTIME, &ts_now);
-			if((ts_now.tv_sec > ds->delay_timer.tv_sec) || 
+			if ((ts_now.tv_sec > ds->delay_timer.tv_sec) ||
 			((ts_now.tv_sec == ds->delay_timer.tv_sec) &&(ts_now.tv_nsec > ds->delay_timer.tv_nsec)) ||
 			ds->delay_cancel)
 			{
@@ -3992,9 +3994,39 @@ void update_service_status(struct tvcc_decoder *td)
 					(decoder, ds, ds->service_data, ds->service_data_in);
 
 				ds->service_data_in = 0;
-            }
+			}
+		}
+		for (j = 0; j < 8; j++)
+		{
+		if (ds->window[j].style.window_flash)
+			{
+		        /*window flash treatment */
+		        if (ds->window[j].style.window_flash)
+		        {
+					ds->window[j].style.fill_opacity = (ts_now.tv_sec%2)?0:3;
+					ds->update = 1;
+				}
+
+				/* Pen flash treatment */
+				for (k = 0; k < 16; k++)
+				{
+					for (l =0; l<42; l++)
+					{
+						target_pen = &ds->window[j].pen[k][l];
+						if (target_pen->bg_flash)
+						{
+							target_pen->bg_opacity = (ts_now.tv_sec%2)?0:3;
+							ds->update = 1;
+						}
+						if (target_pen->fg_flash)
+						{
+							target_pen->fg_opacity = (ts_now.tv_sec%2)?0:3;
+							ds->update = 1;
+						}
+					}
+				}
+	        }
         }
-#endif
     }
     {
 		int i;

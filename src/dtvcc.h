@@ -308,6 +308,8 @@ struct dtvcc_pen_style {
 	enum opacity			bg_opacity;
 
 	dtvcc_color			edge_color;
+	vbi_bool fg_flash;
+	vbi_bool bg_flash;
 };
 
 struct dtvcc_pen {
@@ -327,6 +329,7 @@ struct dtvcc_window_style {
 
 	dtvcc_color			fill_color;
 	enum opacity			fill_opacity;
+	vbi_bool window_flash;
 
 	enum edge			border_type;
 	dtvcc_color			border_color;
