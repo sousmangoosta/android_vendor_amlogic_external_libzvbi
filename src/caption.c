@@ -1281,7 +1281,7 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 			}*/
 
 			if (cc->curr_chan < 4) {
-				erase_memory(cc, ch, ch->hidden);
+				//erase_memory(cc, ch, ch->hidden);
 				erase_memory(cc, ch, ch->hidden ^ 1);
 				clear(ch->pg + (ch->hidden ^ 1));
 
