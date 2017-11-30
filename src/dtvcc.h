@@ -516,5 +516,8 @@ extern void     vbi_decode_caption(vbi_decoder *vbi, int line, const uint8_t *bu
 
 extern int      get_input_offset();
 
+extern void update_service_status(struct tvcc_decoder *td);
+
+
 #endif
 
