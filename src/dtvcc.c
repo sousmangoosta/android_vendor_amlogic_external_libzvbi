@@ -3251,7 +3251,7 @@ dtvcc_delay_cmd (struct dtvcc_decoder *	dc,
 		ds->delay_timer.tv_sec = now_ts.tv_sec + 1;
 		ds->delay = 1;
 		ds->delay_cancel = 0;
-		AM_DEBUG(1, "Enter delay cmd, now %d until %d", now_ts.tv_sec, ds->delay_timer.tv_sec);
+		//AM_DEBUG(1, "Enter delay cmd, now %d until %d", now_ts.tv_sec, ds->delay_timer.tv_sec);
 	}
 	else if (delay_cmd == 0x8E)
 	{
@@ -3583,7 +3583,7 @@ dtvcc_decode_packet		(struct dtvcc_decoder *	dc,
 		if (!ds->delay ||
 			(ds->delay && ds->service_data_in>=128))
 		{
-			AM_DEBUG(1, "service datain %d", ds->service_data_in);
+			//AM_DEBUG(1, "service datain %d", ds->service_data_in);
 			success = dtvcc_decode_syntactic_elements
 				(dc, ds, ds->service_data, ds->service_data_in);
 			if (ds->service_data_in >= 128)
@@ -3987,7 +3987,7 @@ void update_service_status(struct tvcc_decoder *td)
 			((ts_now.tv_sec == ds->delay_timer.tv_sec) &&(ts_now.tv_nsec > ds->delay_timer.tv_nsec)) ||
 			ds->delay_cancel)
 			{
-				AM_DEBUG(1, "delay timeup");
+				//AM_DEBUG(1, "delay timeup");
 				ds->delay = 0;
 				ds->delay_cancel = 0;
 				dtvcc_decode_syntactic_elements
