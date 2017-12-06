@@ -814,7 +814,7 @@ int i;
 	vbi_char *acp = ch->line - ch->pg[ch->hidden].text + ch->pg[ch->hidden^1].text;
 
 	memcpy(acp, ch->line, sizeof(*acp) * COLUMNS);
-	render(ch->pg + 1, ch->row);
+	render(&ch->pg[ch->hidden^1], ch->row);
 #if 0
 	AM_DEBUG(1,"+++ Display line");
 	for (i=0;i<sizeof(*acp) * COLUMNS;i++)
@@ -1369,7 +1369,7 @@ vbi_decode_caption(vbi_decoder *vbi, int line, uint8_t *buf)
 	int field2 = 1, i;
 
 	pthread_mutex_lock(&cc->mutex);
-	AM_DEBUG(1, "vbi_data: line: %d %x %x", line, buf[0], buf[1]);
+	//AM_DEBUG(1, "vbi_data: line: %d %x %x", line, buf[0], buf[1]);
 
 	if (line == 21) {
 		cc->curr_chan = cc->curr_chan_f1;
@@ -1760,6 +1760,35 @@ vbi_fetch_cc_page(vbi_decoder *vbi, vbi_page *pg, vbi_pgno pgno, vbi_bool reset)
 	pthread_mutex_unlock(&vbi->cc.mutex);
 
 	return 1;
+}
+
+void vbi_refresh_cc(vbi_decoder *vbi)
+{
+	cc_channel *ch;
+	vbi_page *spg;
+	int i, j;
+	int flash_flag = 0;
+	vbi_event event;
+	pthread_mutex_lock(&vbi->cc.mutex);
+	for (i = 0; i < 8; i++)
+	{
+		flash_flag = 0;
+		ch = &vbi->cc.channel[i];
+		spg = ch->pg + (ch->hidden ^ 1);
+		for (j = 0; j < sizeof(spg->text)/sizeof(vbi_char); j++)
+		{
+			if (spg->text[j].flash)
+			{
+				flash_flag = 1;
+				break;
+			}
+		}
+		if (flash_flag)
+		{
+			update(ch);
+		}
+	}
+	pthread_mutex_unlock(&vbi->cc.mutex);
 }
 
 /*
