@@ -889,6 +889,8 @@ put_char(struct caption *cc, cc_channel *ch, vbi_char c)
 
 		ch->line[COLUMNS - 2] = c;
 	}
+	if (ch->mode == MODE_POP_ON)
+		return;
 	ch->update = 1;
 	//if ((c.unicode & 0x7F) == 0x20)
 	//	word_break(cc, ch, 1);
@@ -1219,7 +1221,8 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 				word_break(cc, ch, 1);
 				ch->update = 1;
 
-				if (ch->mode == MODE_ROLL_UP) {
+				/*if (ch->mode == MODE_ROLL_UP) */
+				{
 					memmove(acp, acp + COLUMNS, sizeof(*acp) * (ch->roll - 1) * COLUMNS);
 					for (i = 0; i <= COLUMNS; i++) {
 						memset(&ch->line[i], 0, sizeof(vbi_char));
@@ -1233,6 +1236,12 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 
 				ch->col1 = ch->col = 1;
 			}
+			ch->attr.underline = FALSE;
+			ch->attr.background = VBI_BLACK;
+			ch->attr.opacity = VBI_OPAQUE;
+			ch->attr.flash = FALSE;
+			ch->attr.italic = FALSE;
+			ch->attr.foreground = VBI_WHITE;
 
 			return;
 
