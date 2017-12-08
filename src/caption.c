@@ -944,6 +944,7 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 {
     XDS_SEP_DEBUG("caption_command\n");
 	cc_channel *ch;
+	vbi_char *c;
 	int chan, col, i;
 	int last_row;
 	chan = (cc->curr_chan & 4) + field2 * 2 + ((c1 >> 3) & 1);
@@ -1015,10 +1016,25 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 	}
 
 	switch (c1) {
-	case 0:		/* Optional Attributes		001 c000  010 xxxt */
-// not verified
+	case 0:
+	/* Optional Attributes		001 c000  010 xxxt */
 		ch->attr.opacity = (c2 & 1) ? VBI_SEMI_TRANSPARENT : VBI_OPAQUE;
 		ch->attr.background = palette_mapping[(c2 >> 1) & 7];
+		//AM_DEBUG(1, "background_set %x %x %x", ch->line[ch->col].unicode, ch->line[ch->col-1].unicode, ch->line[ch->col-2].unicode);
+		for (i=0; i<2 && ((ch->col - i) >= 0); i++)
+		{
+			if (ch->col < COLUMNS - 1)
+				c = &ch->line[ch->col - i];
+			else {
+			/* line break here? */
+				c = &ch->line[COLUMNS - 2 - i];
+			}
+			if (c->unicode == 0x20)
+			{
+				c->background = ch->attr.background;
+				c->opacity = ch->attr.opacity;
+			}
+		}
 		return;
 
 	case 1:
@@ -1063,7 +1079,7 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 	case 3:
 		/* Send specs to the maintainer of this code */
 		{
-			vbi_char c;
+	vbi_char c;
 
 			c = ch->attr;
 			c.unicode = vbi_caption_unicode((c1 << 8) | c2 | 0x1000, 0);
