@@ -1442,6 +1442,13 @@ vbi_decode_caption(vbi_decoder *vbi, int line, uint8_t *buf)
 				cc->xds = (c1 != XDS_END);
 				goto finish;
 			} else if (c1 <= 0x1F) {
+				xds_sub_packet *sp = cc->curr_sp;
+				unsigned int class, type;
+				if (sp) {
+					class = (sp - cc->sub_packet[0]) / elements(cc->sub_packet[0]);
+					type = (sp - cc->sub_packet[0]) % elements(cc->sub_packet[0]);
+					xds_decoder(vbi, class, type, sp->buffer, sp->count - 2);
+				}
 				cc->xds = FALSE;
 			} else if (cc->xds) {
 				xds_separator(vbi, buf);
