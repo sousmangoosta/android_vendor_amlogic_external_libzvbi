@@ -3817,6 +3817,108 @@ fetch_done:
 
 /* ATSC A/53 Part 4:2007 Closed Caption Data decoder */
 
+/* Only handle effect */
+static void update_service_status_internal (struct tvcc_decoder *td)
+{
+	int i, j, k, l;
+	struct timespec ts_now;
+	struct dtvcc_decoder *decoder;
+	struct dtvcc_pen_style *target_pen;
+	int flash;
+
+	decoder = &td->dtvcc;
+	clock_gettime(CLOCK_REALTIME, &ts_now);
+
+	flash = (ts_now.tv_nsec / 250000000) & 1;
+
+	/* CS1 - CS6 */
+	for (i = 0; i < 6; ++i)
+	{
+		struct dtvcc_service *ds;
+		struct program *pr;
+		vbi_bool success;
+		ds = &decoder->service[i];
+		/* Check every effect */
+		if (ds->delay)
+		{
+			struct vbi_event event;
+			/* time is up */
+			if ((ts_now.tv_sec > ds->delay_timer.tv_sec) ||
+			((ts_now.tv_sec == ds->delay_timer.tv_sec) &&(ts_now.tv_nsec > ds->delay_timer.tv_nsec)) ||
+			ds->delay_cancel)
+			{
+				//AM_DEBUG(1, "delay timeup");
+				ds->delay = 0;
+				ds->delay_cancel = 0;
+				dtvcc_decode_syntactic_elements
+					(decoder, ds, ds->service_data, ds->service_data_in);
+
+				ds->service_data_in = 0;
+			}
+		}
+
+		if (flash == decoder->flash_state)
+			continue;
+
+		for (j = 0; j < 8; j++)
+		{
+		        /*window flash treatment */
+		        if (ds->window[j].style.window_flash)
+		        {
+				ds->window[j].style.fill_opacity = flash?0:3;
+				ds->update = 1;
+			}
+
+			/* Pen flash treatment */
+			for (k = 0; k < 16; k++)
+			{
+				for (l =0; l<42; l++)
+				{
+					target_pen = &ds->window[j].pen[k][l];
+					if (target_pen->bg_flash)
+					{
+						target_pen->bg_opacity = flash?0:3;
+						ds->update = 1;
+					}
+					if (target_pen->fg_flash)
+					{
+						target_pen->fg_opacity = flash?0:3;
+						ds->update = 1;
+					}
+				}
+			}
+	        }
+        }
+
+	decoder->flash_state = flash;
+}
+
+static void
+update_display (struct tvcc_decoder *td)
+{
+	int i;
+
+	for (i = 0; i < N_ELEMENTS(td->dtvcc.service); i ++) {
+		struct dtvcc_service *ds = &td->dtvcc.service[i];
+
+		if (ds->update) {
+			struct vbi_event event;
+
+			event.type = VBI_EVENT_CAPTION;
+			event.ev.caption.pgno = i + 1 + 8/*after 8 cc channels*/;
+
+			/* Permits calling tvcc_fetch_page from handler */
+			pthread_mutex_unlock(&td->mutex);
+
+			vbi_send_event(td->vbi, &event);
+			pthread_mutex_lock(&td->mutex);
+
+			ds->update = 0;
+		}
+	}
+}
+
+
 /* Note pts may be < 0 if no PTS was received. */
 void
 tvcc_decode_data			(struct tvcc_decoder *td,
@@ -3936,121 +4038,21 @@ tvcc_decode_data			(struct tvcc_decoder *td,
 		}
 	}
 
-	{
-		int i;
+	update_service_status_internal(td);
+	update_display(td);
 
-		for (i = 0; i < N_ELEMENTS(td->dtvcc.service); i ++) {
-			struct dtvcc_service *ds = &td->dtvcc.service[i];
-
-			if (ds->update) {
-				struct vbi_event event;
-
-				event.type = VBI_EVENT_CAPTION;
-				event.ev.caption.pgno = i + 1 + 8/*after 8 cc channels*/;
-
-				/* Permits calling tvcc_fetch_page from handler */
-				pthread_mutex_unlock(&td->mutex);
-
-                vbi_send_event(td->vbi, &event);
-                pthread_mutex_lock(&td->mutex);
-
-                ds->update = 0;
-            }
-        }
-    }
-
-    pthread_mutex_unlock(&td->mutex);
+	pthread_mutex_unlock(&td->mutex);
 }
 
 /* Only handle effect */
 void update_service_status(struct tvcc_decoder *td)
 {
-	int i, j, k, l;
-	struct timespec ts_now;
-	struct dtvcc_decoder *decoder;
-	struct dtvcc_pen_style *target_pen;
-	decoder = &td->dtvcc;
-	clock_gettime(CLOCK_REALTIME, &ts_now);
 	pthread_mutex_lock(&td->mutex);
-	/* CS1 - CS6 */
-    for (i = 0; i < 6; ++i) {
-        struct dtvcc_service *ds;
-        struct program *pr;
-        vbi_bool success;
-        ds = &decoder->service[i];
-		/* Check every effect */
-		if (ds->delay)
-		{
-            struct vbi_event event;
-			/* time is up */
-			if ((ts_now.tv_sec > ds->delay_timer.tv_sec) ||
-			((ts_now.tv_sec == ds->delay_timer.tv_sec) &&(ts_now.tv_nsec > ds->delay_timer.tv_nsec)) ||
-			ds->delay_cancel)
-			{
-				//AM_DEBUG(1, "delay timeup");
-				ds->delay = 0;
-				ds->delay_cancel = 0;
-				dtvcc_decode_syntactic_elements
-					(decoder, ds, ds->service_data, ds->service_data_in);
 
-				ds->service_data_in = 0;
-			}
-		}
-		for (j = 0; j < 8; j++)
-		{
-		if (ds->window[j].style.window_flash)
-			{
-		        /*window flash treatment */
-		        if (ds->window[j].style.window_flash)
-		        {
-					ds->window[j].style.fill_opacity = (ts_now.tv_sec%2)?0:3;
-					ds->update = 1;
-				}
+	update_service_status_internal(td);
+	update_display(td);
 
-				/* Pen flash treatment */
-				for (k = 0; k < 16; k++)
-				{
-					for (l =0; l<42; l++)
-					{
-						target_pen = &ds->window[j].pen[k][l];
-						if (target_pen->bg_flash)
-						{
-							target_pen->bg_opacity = (ts_now.tv_sec%2)?0:3;
-							ds->update = 1;
-						}
-						if (target_pen->fg_flash)
-						{
-							target_pen->fg_opacity = (ts_now.tv_sec%2)?0:3;
-							ds->update = 1;
-						}
-					}
-				}
-	        }
-        }
-    }
-    {
-		int i;
-
-		for (i = 0; i < N_ELEMENTS(td->dtvcc.service); i ++) {
-			struct dtvcc_service *ds = &td->dtvcc.service[i];
-
-			if (ds->update) {
-				struct vbi_event event;
-
-				event.type = VBI_EVENT_CAPTION;
-				event.ev.caption.pgno = i + 1 + 8/*after 8 cc channels*/;
-
-				/* Permits calling tvcc_fetch_page from handler */
-				pthread_mutex_unlock(&td->mutex);
-
-                vbi_send_event(td->vbi, &event);
-                pthread_mutex_lock(&td->mutex);
-
-                ds->update = 0;
-            }
-        }
-    }
-    pthread_mutex_unlock(&td->mutex);
+	pthread_mutex_unlock(&td->mutex);
 }
 
 void tvcc_init(struct tvcc_decoder *td)

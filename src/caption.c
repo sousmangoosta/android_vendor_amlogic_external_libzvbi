@@ -810,7 +810,7 @@ static inline void
 update(cc_channel *ch)
 {
 #if 1
-int i;
+	int i;
 	vbi_char *acp = ch->line - ch->pg[ch->hidden].text + ch->pg[ch->hidden^1].text;
 
 	memcpy(acp, ch->line, sizeof(*acp) * COLUMNS);
@@ -1237,7 +1237,7 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 				word_break(cc, ch, 1);
 				ch->update = 1;
 
-				/*if (ch->mode == MODE_ROLL_UP) */
+				if (ch->mode == MODE_ROLL_UP)
 				{
 					memmove(acp, acp + COLUMNS, sizeof(*acp) * (ch->roll - 1) * COLUMNS);
 					for (i = 0; i <= COLUMNS; i++) {
@@ -1373,6 +1373,20 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 			c.unicode = 0x0020;
 			ch->line[ch->col - 1] = c;
 		}
+	}
+}
+
+static void
+update_display (vbi_decoder *vbi)
+{
+	struct caption *cc = &vbi->cc;
+	int i;
+
+	for (i=0; i<8; i++)
+	{
+		if (cc->channel[i].update == 1)
+		update(&cc->channel[i]);
+		cc->channel[i].update = 0;
 	}
 }
 
@@ -1541,12 +1555,8 @@ vbi_decode_caption(vbi_decoder *vbi, int line, uint8_t *buf)
 			put_char(cc, ch, c);
 		}
 	}
-	for (i=0; i<8; i++)
-	{
-		if (cc->channel[i].update == 1)
-		update(&cc->channel[i]);
-		cc->channel[i].update = 0;
-	}
+
+	update_display(vbi);
 
 	if (line == 21) {
 		cc->curr_chan_f1 = cc->curr_chan;
@@ -1792,27 +1802,36 @@ void vbi_refresh_cc(vbi_decoder *vbi)
 	cc_channel *ch;
 	vbi_page *spg;
 	int i, j;
-	int flash_flag = 0;
 	vbi_event event;
+	struct timespec now;
+	int flash;
+
+	clock_gettime(CLOCK_REALTIME, &now);
+
+	flash = (now.tv_nsec / 250000000) & 1;
+
 	pthread_mutex_lock(&vbi->cc.mutex);
-	for (i = 0; i < 8; i++)
-	{
-		flash_flag = 0;
-		ch = &vbi->cc.channel[i];
-		spg = ch->pg + (ch->hidden ^ 1);
-		for (j = 0; j < sizeof(spg->text)/sizeof(vbi_char); j++)
+
+	if (flash != vbi->cc.flash_state) {
+		vbi->cc.flash_state = flash;
+
+		for (i = 0; i < 8; i++)
 		{
-			if (spg->text[j].flash)
+			ch = &vbi->cc.channel[i];
+			spg = ch->pg + (ch->hidden ^ 1);
+			for (j = 0; j < sizeof(spg->text)/sizeof(vbi_char); j++)
 			{
-				flash_flag = 1;
-				break;
+				if (spg->text[j].flash)
+				{
+					ch->update = 1;
+					break;
+				}
 			}
 		}
-		if (flash_flag)
-		{
-			update(ch);
-		}
+
+		update_display(vbi);
 	}
+
 	pthread_mutex_unlock(&vbi->cc.mutex);
 }
 

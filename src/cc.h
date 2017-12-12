@@ -89,6 +89,7 @@ struct caption {
 	int			itv_count;
 
 	int			info_cycle[2];
+	int                     flash_state;
 };
 
 /* Public */
