@@ -54,6 +54,10 @@ typedef struct {
 	int			col, col1;
 	int			row, row1;
 	int			roll;
+	int                     update_flag;
+	int                     update_all_flag;
+	int                     edm_flag;
+	int                     pos_flag;
 
 	int			nul_ct;	// XXX should be 'silence count'
 	double			time;
