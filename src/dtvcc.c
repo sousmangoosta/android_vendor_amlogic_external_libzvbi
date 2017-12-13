@@ -3450,6 +3450,40 @@ dtvcc_decode_syntactic_elements	(struct dtvcc_decoder *	dc,
 	return TRUE;
 }
 
+static void
+dtvcc_try_decode_channels (struct dtvcc_decoder *dc)
+{
+	int i;
+
+	for (i = 0; i < 6; ++i) {
+		struct dtvcc_service *ds;
+		struct program *pr;
+		vbi_bool success;
+
+		ds = &dc->service[i];
+		if (0 == ds->service_data_in)
+			continue;
+		if (!ds->delay ||
+			(ds->delay && ds->service_data_in>=128))
+		{
+			//AM_DEBUG(1, "service datain %d", ds->service_data_in);
+			success = dtvcc_decode_syntactic_elements
+				(dc, ds, ds->service_data, ds->service_data_in);
+			if (ds->service_data_in >= 128)
+			{
+				ds->delay = 0;
+				ds->delay_cancel = 0;
+			}
+			ds->service_data_in = 0;
+
+			if (success)
+				continue;
+		}
+		//dtvcc_reset_service (ds);
+		//dc->next_sequence_number = -1;
+	}
+}
+
 void
 dtvcc_decode_packet		(struct dtvcc_decoder *	dc,
 				 const struct timeval *	tv,
@@ -3474,7 +3508,7 @@ dtvcc_decode_packet		(struct dtvcc_decoder *	dc,
 
 	/* sequence_number [2], packet_size_code [6],
 	   packet_data [n * 8] */
-#if 1
+#if 0
 	if (dc->next_sequence_number >= 0
 	    && 0 != ((dc->packet[0] ^ dc->next_sequence_number) & 0xC0)) {
 		dtvcc_reset (dc);
@@ -3536,7 +3570,6 @@ dtvcc_decode_packet		(struct dtvcc_decoder *	dc,
 		if (7 == service_number) {
 			if (i + 1 > packet_size)
 				break;
-				//goto service_block_incomplete;
 
 			header_size = 2;
 			c = dc->packet[i + 1];
@@ -3544,7 +3577,6 @@ dtvcc_decode_packet		(struct dtvcc_decoder *	dc,
 			/* We also check the null_fill bits. */
 			if (c < 7 || c > 63)
 				break;
-				//goto invalid_service_block;
 
 			service_number = c;
 		}
@@ -3555,7 +3587,6 @@ dtvcc_decode_packet		(struct dtvcc_decoder *	dc,
 		{
 			break;
 		}
-			//goto service_block_incomplete;
 
 		if (service_number <= 6) {
 			struct dtvcc_service *ds;
@@ -3572,48 +3603,62 @@ dtvcc_decode_packet		(struct dtvcc_decoder *	dc,
 		i += header_size + block_size;
 	}
 
-	for (i = 0; i < 6; ++i) {
-		struct dtvcc_service *ds;
-		struct program *pr;
-		vbi_bool success;
-
-		ds = &dc->service[i];
-		if (0 == ds->service_data_in)
-			continue;
-		if (!ds->delay ||
-			(ds->delay && ds->service_data_in>=128))
-		{
-			//AM_DEBUG(1, "service datain %d", ds->service_data_in);
-			success = dtvcc_decode_syntactic_elements
-				(dc, ds, ds->service_data, ds->service_data_in);
-			if (ds->service_data_in >= 128)
-			{
-				ds->delay = 0;
-				ds->delay_cancel = 0;
-			}
-			ds->service_data_in = 0;
-
-			if (success)
-				continue;
-		}
-		//dtvcc_reset_service (ds);
-		dc->next_sequence_number = -1;
-	}
-
+	dtvcc_try_decode_channels(dc);
 	return;
+}
 
- invalid_service_block:
-	{
-		dtvcc_reset (dc);
-		return;
+static int
+dtvcc_get_se_len (unsigned char *p, int left)
+{
+	unsigned char c;
+	int se_length;
+
+	if (left < 1)
+		return 0;
+
+	c = p[0];
+
+	if ((c == 0x8d) && (c == 0x8e))
+		return 1;
+
+	if (0 != (c & 0x60))
+		return 1;
+
+	if (0x10 != c) {
+		if ((int8_t) c < 0) {
+			se_length = dtvcc_c1_length[c - 0x80];
+		} else {
+			se_length = dtvcc_c0_length[c >> 3];
+		}
+
+		if (left < se_length)
+			return 0;
+
+		return se_length;
 	}
 
- service_block_incomplete:
-	{
-		dtvcc_reset (dc);
-		return;
+	if (left < 2)
+		return 0;
+
+	c = p[1];
+	if (0 != (c & 0x60))
+		return 2;
+
+	if ((int8_t) c >= 0) {
+		se_length = (c >> 3) + 2;
+	} else if (c < 0x90) {
+		se_length = (c >> 3) - 10;
+	} else {
+		if (left < 3)
+			return 0;
+
+		se_length = (p[2] & 0x1F) + 3;
 	}
 
+	if (left < se_length)
+		return 0;
+
+	return se_length;
 }
 
 void
@@ -3623,6 +3668,8 @@ dtvcc_try_decode_packet		(struct dtvcc_decoder *	dc,
 {
 	unsigned int packet_size_code;
 	unsigned int packet_size;
+	unsigned char *p;
+	int left;
 
 	if (dc->packet_size < 1)
 		return;
@@ -3636,6 +3683,112 @@ dtvcc_try_decode_packet		(struct dtvcc_decoder *	dc,
 	if (packet_size <= dc->packet_size) {
 		dtvcc_decode_packet(dc, tv, pts);
 		dc->packet_size = 0;
+		return;
+	}
+
+	p    = dc->packet + 1;
+	left = dc->packet_size - 1;
+	while (left > 0) {
+		unsigned int service_number;
+		unsigned int block_size;
+		unsigned int header_size;
+		unsigned int c;
+
+		header_size = 1;
+
+		c = p[0];
+		service_number = (c & 0xE0) >> 5;
+		if (0 == service_number)
+			break;
+
+		block_size = c & 0x1F;
+
+		if (7 == service_number) {
+			if (left < 2)
+				break;
+
+			header_size = 2;
+			c = p[1];
+
+			if (c < 7 || c > 63)
+				break;
+
+			service_number = c;
+		}
+
+		if (left >= header_size + block_size) {
+			if (service_number <= 6) {
+				struct dtvcc_service *ds;
+				unsigned int in;
+
+				ds = &dc->service[service_number - 1];
+				in = ds->service_data_in;
+				memcpy (ds->service_data + in,
+						p + header_size,
+						block_size);
+
+				ds->service_data_in = in + block_size;
+			}
+		} else {
+			unsigned char *s = p + header_size;
+			int sleft = left - header_size;
+
+			while (sleft > 0) {
+				int se_len;
+
+				se_len = dtvcc_get_se_len(s, sleft);
+				if (se_len <= 0)
+					break;
+
+				s     += se_len;
+				sleft -= se_len;
+			}
+
+			if (sleft != left - header_size) {
+				int parsed = left - header_size - sleft;
+
+				if (service_number <= 6) {
+					struct dtvcc_service *ds;
+					unsigned int in;
+
+					ds = &dc->service[service_number - 1];
+					in = ds->service_data_in;
+					memcpy (ds->service_data + in,
+							p + header_size,
+							parsed);
+
+					ds->service_data_in = in + parsed;
+				}
+
+				memmove(p + header_size, s, sleft);
+				block_size -= parsed;
+				left -= parsed;
+
+				p[0] &= ~0x1f;
+				p[0] |= block_size;
+			}
+			break;
+		}
+
+		p    += header_size + block_size;
+		left -= header_size + block_size;
+	}
+
+	if (left != dc->packet_size - 1) {
+		int parsed = dc->packet_size - 1 - left;
+
+		memmove(dc->packet + 1, p, left);
+
+		packet_size_code = ((dc->packet[0] & 0x3f) << 1) - parsed;
+		if (packet_size_code & 1)
+			packet_size_code ++;
+		packet_size_code >>= 1;
+
+		dc->packet[0] &= ~0x3f;
+		dc->packet[0] |= packet_size_code;
+		dc->packet_size = left + 1;
+
+		dtvcc_try_decode_channels(dc);
 	}
 }
 
