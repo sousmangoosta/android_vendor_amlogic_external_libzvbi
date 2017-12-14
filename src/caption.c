@@ -160,7 +160,9 @@ xds_decoder(vbi_decoder *vbi, int _class, int type,
 	int neq, i;
 	vbi_event e;
 
-	assert(length > 0 && length <= 32);
+	if ((length <= 0) || (length > 32))
+		return;
+	//assert(length > 0 && length <= 32);
 
 // XXX we have no indication how long the program info applies.
 //     It will be canceled on channel switch, but who knows
@@ -909,12 +911,12 @@ set_cursor(cc_channel *ch, int col, int row)
 {
 	if (row < ch->row1) {
 		ch->row1 = row;
-		clear_roll(ch);
-		update_all(ch);
+		//clear_roll(ch);
+		//update_all(ch);
 	} else if (row >= ch->row1 + ch->roll) {
 		ch->row1 = row - ch->roll + 1;
-		clear_roll(ch);
-		update_all(ch);
+		//clear_roll(ch);
+		//update_all(ch);
 	}
 
 	ch->col = ch->col1 = col;
@@ -955,7 +957,7 @@ put_char(struct caption *cc, cc_channel *ch, vbi_char c)
 static inline cc_channel *
 switch_channel(struct caption *cc, cc_channel *ch, int new_chan)
 {
-	word_break(cc, ch, 1); // we leave for a number of frames
+	//word_break(cc, ch, 1); // we leave for a number of frames
 
 	return &cc->channel[cc->curr_chan = new_chan];
 }
@@ -1760,6 +1762,9 @@ vbi_caption_init(vbi_decoder *vbi)
 		ch->pg[0].font[1] = vbi_font_descriptors;
 
 		memcpy(&ch->pg[1], &ch->pg[0], sizeof(ch->pg[1]));
+
+		if (i >= 4)
+			ch->pos_flag = 1;
 	}
 
        	for (i = 0; i < 2; i++) {
