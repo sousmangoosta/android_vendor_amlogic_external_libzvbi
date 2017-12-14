@@ -914,10 +914,18 @@ set_cursor(cc_channel *ch, int col, int row)
 		ch->row1 = row;
 		//clear_roll(ch);
 		//update_all(ch);
+		if (ch->mode == MODE_ROLL_UP) {
+			clear_roll(ch);
+			update_all(ch);
+		}
 	} else if (row >= ch->row1 + ch->roll) {
 		ch->row1 = row - ch->roll + 1;
 		//clear_roll(ch);
 		//update_all(ch);
+		if (ch->mode == MODE_ROLL_UP) {
+			clear_roll(ch);
+			update_all(ch);
+		}
 	}
 
 	ch->col = ch->col1 = col;
