@@ -3795,11 +3795,22 @@ dtvcc_try_decode_packet		(struct dtvcc_decoder *	dc,
 static void
 dtvcc_reset_service		(struct dtvcc_service *	ds)
 {
+	int i;
 	ds->curr_window = NULL;
 	ds->created = 0;
 	ds->delay = 0;
 	ds->delay_cancel = 0;
+	struct dtvcc_window *dw;
+	for (i=0;i<8;i++)
+	{
+		dw = &ds->window[i];
+		ds->window[i].visible = 0;
+		memset (dw->buffer, 0, sizeof (dw->buffer));
+		memset (dw->pen, 0, sizeof(dw->pen));
 
+		dw->streamed = 0;
+	}
+	ds->update = 1;
 	cc_timestamp_reset (&ds->timestamp);
 }
 
@@ -3825,14 +3836,14 @@ static void dtvcc_window_to_page(vbi_decoder *vbi, struct dtvcc_window *dw, stru
 	int i, j, c;
 	vbi_char ac;
 	vbi_opacity fg_opacity, bg_opacity;
-	
+
 	static const vbi_opacity vbi_opacity_map[]={
 		VBI_OPAQUE,
 		VBI_OPAQUE,
 		VBI_SEMI_TRANSPARENT,
 		VBI_TRANSPARENT_SPACE
 	};
-	
+
 	memset(pg, 0, sizeof(struct vbi_page));
 #if 1
 	pg->rows = dw->row_count;
@@ -3840,7 +3851,7 @@ static void dtvcc_window_to_page(vbi_decoder *vbi, struct dtvcc_window *dw, stru
 
 	dtvcc_set_page_color_map(vbi, pg);
 	memset(dw->row_start, 0, sizeof(dw->row_start));
-	
+
 	for (i=0; i<pg->rows; i++)
 	{
 		for (j=0; j<pg->columns; j++)
@@ -3858,11 +3869,11 @@ static void dtvcc_window_to_page(vbi_decoder *vbi, struct dtvcc_window *dw, stru
 			}else{
 				bg_opacity = vbi_opacity_map[dw->curr_pen.style.bg_opacity];
 			}
-			
+
 			ac.opacity = (fg_opacity<<4) | bg_opacity;
 			ac.foreground = dtvcc_map_color(dw->curr_pen.style.fg_color);
 			ac.background = dtvcc_map_color(dw->curr_pen.style.bg_color);
-			
+
 			c = dw->buffer[i][j];
 			if (0 == c) {
 				ac.unicode = 0x20;
@@ -3932,7 +3943,7 @@ static void dtvcc_get_visible_windows(struct dtvcc_service *ds, int *cnt, struct
 void tvcc_fetch_page(struct tvcc_decoder *td, int pgno, int *sub_cnt, struct vbi_page *sub_pages)
 {
 	int sub_pg = 0;
-	
+
 	if (pgno < 1 || pgno > 14 || *sub_cnt <= 0)
 		goto fetch_done;
 
@@ -3946,24 +3957,23 @@ void tvcc_fetch_page(struct tvcc_decoder *td, int pgno, int *sub_cnt, struct vbi
 		struct dtvcc_service *ds = &td->dtvcc.service[pgno - 1 - 8];
 		struct dtvcc_window *dw;
 		struct dtvcc_window *visible_windows[8];
-		
+
 		sub_pg = *sub_cnt;
 		if (sub_pg > 8)
 			sub_pg = 8;
-		
+
 		dtvcc_get_visible_windows(ds, &sub_pg, visible_windows);
-		
+
 		for (i=0; i<sub_pg; i++){
 			dw = visible_windows[i];
-			
-			dtvcc_window_to_page(td->vbi, dw, &sub_pages[i]);	
-			
+
+			dtvcc_window_to_page(td->vbi, dw, &sub_pages[i]);
 			sub_pages[i].vbi = td->vbi;
 			sub_pages[i].pgno = pgno;
 			sub_pages[i].subno = dw - ds->window;
 		}
 	}
-	
+
 fetch_done:
 	*sub_cnt = sub_pg;
 }
