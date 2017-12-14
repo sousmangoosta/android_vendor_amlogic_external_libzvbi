@@ -904,6 +904,7 @@ roll_up (cc_channel *ch, int roll)
 		ch->row1 = 0;
 	if (ch->row < 0)
 		ch->row = 0;
+	clear_roll(ch);
 }
 
 static inline void
