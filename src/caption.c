@@ -912,16 +912,12 @@ set_cursor(cc_channel *ch, int col, int row)
 {
 	if (row < ch->row1) {
 		ch->row1 = row;
-		//clear_roll(ch);
-		//update_all(ch);
 		if (ch->mode == MODE_ROLL_UP) {
 			clear_roll(ch);
 			update_all(ch);
 		}
 	} else if (row >= ch->row1 + ch->roll) {
 		ch->row1 = row - ch->roll + 1;
-		//clear_roll(ch);
-		//update_all(ch);
 		if (ch->mode == MODE_ROLL_UP) {
 			clear_roll(ch);
 			update_all(ch);
@@ -1158,9 +1154,12 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 		case 0:		/* Resume Caption Loading	001 c10f  010 0000 */
 			ch = switch_channel(cc, ch, chan & 3);
 
-			ch->mode = MODE_POP_ON;
+			if (ch->mode != MODE_POP_ON) {
+				erase_memory(cc, ch, ch->hidden);
+				erase_memory(cc, ch, ch->hidden ^ 1);
+			}
 
-// no?			erase_memory(cc, ch);
+			ch->mode = MODE_POP_ON;
 
 			return;
 
@@ -1192,6 +1191,9 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 		case 9:		/* Resume Direct Captioning	001 c10f  010 1001 */
 // not verified
 			ch = switch_channel(cc, ch, chan & 3);
+			if (ch->edm_flag) {
+				erase_memory(cc, ch, ch->hidden);
+			}
 			ch->mode = MODE_PAINT_ON;
 			return;
 
