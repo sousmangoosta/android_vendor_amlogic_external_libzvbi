@@ -55,8 +55,6 @@ typedef struct {
 	int			row, row1;
 	int			roll;
 	int                     update_flag;
-	int                     update_all_flag;
-	int                     edm_flag;
 	int                     pos_flag;
 
 	int			nul_ct;	// XXX should be 'silence count'
@@ -67,7 +65,7 @@ typedef struct {
 	vbi_char *		line;
 
 	int			hidden;
-	vbi_page		pg[2];
+	vbi_page		pg[3];
 	int update;
 } cc_channel;
 

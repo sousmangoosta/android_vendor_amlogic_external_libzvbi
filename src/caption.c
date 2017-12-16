@@ -750,88 +750,22 @@ itv_separator(vbi_decoder *vbi, struct caption *cc, char c)
 #define COLUMNS			34
 
 static void
-render(vbi_page *pg)
-{
-	vbi_event event;
-#if 0
-	if (row < 0 || pg->dirty.roll) {
-		/* no particular row or not fetched
-		   since last roll/clear, redraw all */
-		pg->dirty.y0 = 0;
-		pg->dirty.y1 = ROWS - 1;
-		pg->dirty.roll = 0;
-	} else {
-		pg->dirty.y0 = MIN(row, pg->dirty.y0);
-		pg->dirty.y1 = MAX(row, pg->dirty.y1);
-	}
-#endif
-	event.type = VBI_EVENT_CAPTION;
-	event.ev.caption.pgno = pg->pgno;
-
-	caption_send_event(pg->vbi, &event);
-}
-
-#if 0
-static void
-clear(vbi_page *pg)
+render(cc_channel *ch)
 {
 	vbi_event event;
 
-	pg->dirty.y0 = 0;
-	pg->dirty.y1 = ROWS - 1;
-	pg->dirty.roll = -ROWS;
+	ch->pg[2] = ch->pg[ch->hidden ^ 1];
 
 	event.type = VBI_EVENT_CAPTION;
-	event.ev.caption.pgno = pg->pgno;
+	event.ev.caption.pgno = ch->pg[0].pgno;
 
-	caption_send_event(pg->vbi, &event);
+	caption_send_event(ch->pg[0].vbi, &event);
 }
-
-static void
-roll_up(vbi_page *pg, int first_row, int last_row)
-{
-	vbi_event event;
-
-	if (pg->dirty.roll != 0 || pg->dirty.y0 <= pg->dirty.y1) {
-		/* not fetched since last update, redraw all */
-		pg->dirty.roll = 0;
-		pg->dirty.y0 = MIN(first_row, pg->dirty.y0);
-		pg->dirty.y1 = MAX(last_row, pg->dirty.y1);
-	} else {
-		pg->dirty.roll = -1;
-		pg->dirty.y0 = first_row;
-		pg->dirty.y1 = last_row;
-	}
-
-	event.type = VBI_EVENT_CAPTION;
-	event.ev.caption.pgno = pg->pgno;
-
-	caption_send_event(pg->vbi, &event);
-}
-#endif
 
 static inline void
-update_all(cc_channel *ch)
+update(cc_channel *ch)
 {
-	memcpy(&ch->pg[ch->hidden ^ 1].text, &ch->pg[ch->hidden].text, ROWS * COLUMNS * sizeof(vbi_char));
 	ch->update_flag     = 1;
-	ch->update_all_flag = 0;
-}
-
-static inline void
-update_line(cc_channel *ch)
-{
-	vbi_char *acp;
-
-	if (ch->update_all_flag) {
-		update_all(ch);
-		return;
-	}
-
-	acp = ch->line - ch->pg[ch->hidden].text + ch->pg[ch->hidden ^ 1].text;
-
-	memcpy(acp, ch->line, sizeof(vbi_char) * COLUMNS);
-	ch->update_flag = 1;
 }
 
 static void
@@ -873,7 +807,7 @@ word_break(struct caption *cc, cc_channel *ch, int upd)
 	 *  XXX should not render if space follows space,
 	 *  but force in long words.
 	 */
-	update_line(ch);
+	update(ch);
 }
 
 static void
@@ -885,14 +819,14 @@ clear_roll(cc_channel *ch)
 		if ((i >= ch->row1) && (i < ch->row1 + ch->roll))
 			continue;
 
-		memset(ch->pg[ch->hidden].text + i * COLUMNS, 0, sizeof(vbi_char) * COLUMNS);
+		memset(ch->pg[ch->hidden ^ 1].text + i * COLUMNS, 0, sizeof(vbi_char) * COLUMNS);
 	}
 }
 
 static void
 roll_up (cc_channel *ch, int roll)
 {
-	vbi_char *acp = ch->pg[ch->hidden].text;
+	vbi_char *acp = ch->pg[ch->hidden ^ 1].text;
 
 	memmove(acp, acp + roll * COLUMNS, (ROWS - roll) * COLUMNS * sizeof(vbi_char));
 	memset(acp + (ROWS - roll) * COLUMNS, 0, roll * COLUMNS * sizeof(vbi_char));
@@ -910,23 +844,26 @@ roll_up (cc_channel *ch, int roll)
 static inline void
 set_cursor(cc_channel *ch, int col, int row)
 {
+	int p;
 	if (row < ch->row1) {
 		ch->row1 = row;
 		if (ch->mode == MODE_ROLL_UP) {
 			clear_roll(ch);
-			update_all(ch);
+			update(ch);
 		}
 	} else if (row >= ch->row1 + ch->roll) {
 		ch->row1 = row - ch->roll + 1;
 		if (ch->mode == MODE_ROLL_UP) {
 			clear_roll(ch);
-			update_all(ch);
+			update(ch);
 		}
 	}
 
 	ch->col = ch->col1 = col;
 	ch->row = row;
-	ch->line = ch->pg[ch->hidden].text + row * COLUMNS;
+
+	p = (ch->mode == MODE_POP_ON) ? ch->hidden : (ch->hidden ^ 1);
+	ch->line = ch->pg[p].text + row * COLUMNS;
 }
 
 static void
@@ -936,7 +873,6 @@ set_char(cc_channel *ch, int col, vbi_char c)
 		return;
 
 	ch->line[col] = c;
-	ch->edm_flag = 0;
 }
 
 static void
@@ -956,14 +892,12 @@ put_char(struct caption *cc, cc_channel *ch, vbi_char c)
 	if (ch->mode == MODE_POP_ON)
 		return;
 
-	update_line(ch);
+	update(ch);
 }
 
 static inline cc_channel *
 switch_channel(struct caption *cc, cc_channel *ch, int new_chan)
 {
-	//word_break(cc, ch, 1); // we leave for a number of frames
-
 	return &cc->channel[cc->curr_chan = new_chan];
 }
 
@@ -973,7 +907,6 @@ erase_memory(struct caption *cc, cc_channel *ch, int page)
 	vbi_page *pg = ch->pg + page;
 
 	memset(pg->text, 0, ROWS * COLUMNS * sizeof(vbi_char));
-	ch->update_all_flag = 1;
 }
 
 static const vbi_color
@@ -1030,7 +963,7 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 			roll = ch->row1 - row1;
 			if (roll > 0) {
 				roll_up(ch, ch->row1 - row1);
-				update_all(ch);
+				update(ch);
 			}
 		}
 
@@ -1154,13 +1087,7 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 		case 0:		/* Resume Caption Loading	001 c10f  010 0000 */
 			ch = switch_channel(cc, ch, chan & 3);
 
-			if (ch->mode != MODE_POP_ON) {
-				erase_memory(cc, ch, ch->hidden);
-				erase_memory(cc, ch, ch->hidden ^ 1);
-			}
-
 			ch->mode = MODE_POP_ON;
-
 			return;
 
 		/* case 4: reserved */
@@ -1173,27 +1100,21 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 
 			ch = switch_channel(cc, ch, chan & 3);
 
-			if (ch->mode == MODE_ROLL_UP && ch->roll == roll && !ch->edm_flag)
+			if (ch->mode == MODE_ROLL_UP && ch->roll == roll)
 				return;
-
-			if (ch->edm_flag) {
-				erase_memory(cc, ch, ch->hidden);
-				erase_memory(cc, ch, ch->hidden ^ 1);
-				ch->update_flag = 1;
-			}
 
 			ch->mode = MODE_ROLL_UP;
 			ch->roll = roll;
 
+			ch->row1 = ch->row - roll + 1;
+			if (ch->row1 < 0)
+				ch->row1 = 0;
 			return;
 		}
 
 		case 9:		/* Resume Direct Captioning	001 c10f  010 1001 */
 // not verified
 			ch = switch_channel(cc, ch, chan & 3);
-			if (ch->edm_flag) {
-				erase_memory(cc, ch, ch->hidden);
-			}
 			ch->mode = MODE_PAINT_ON;
 			return;
 
@@ -1220,8 +1141,7 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 			ch->hidden ^= 1;
 
 			erase_memory(cc, ch, ch->hidden); // yes?
-
-			ch->update_flag = 1;
+			update(ch);
 
 			/*
 			 *  A Preamble Address Code should follow,
@@ -1247,9 +1167,10 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 					ch->col --;
 				} else if (ch->row > 0) {
 					vbi_char *acp;
+					int p = (ch->mode == MODE_POP_ON) ? ch->hidden : (ch->hidden ^ 1);
 
 					ch->row --;
-					ch->line = ch->pg[ch->hidden].text + ch->row * COLUMNS;
+					ch->line = ch->pg[p].text + ch->row * COLUMNS;
 					ch->col1 = 1;
 					ch->col  = COLUMNS - 1;
 					acp = ch->line + COLUMNS - 1;
@@ -1270,7 +1191,7 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 				if (ch->col < ch->col1)
 					ch->col1 = ch->col;
 
-				update_line(ch);
+				update(ch);
 			}
 
 			return;
@@ -1282,15 +1203,15 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 			if ((ch->row >= ROWS - 1) && (ch->mode == MODE_ROLL_UP)) {
 				roll_up(ch, 1);
 				set_cursor(ch, 1, ROWS - 1);
-				update_all(ch);
+				update(ch);
 			} else if (ch->row >= ROWS - 1) {
 				set_cursor(ch, 1, ROWS - 1);
 				if (ch->mode != MODE_POP_ON)
-					update_line(ch);
+					update(ch);
 			} else {
 				set_cursor(ch, 1, ch->row + 1);
 				if (ch->mode != MODE_POP_ON)
-					update_line(ch);
+					update(ch);
 			}
 
 			ch->attr.underline = FALSE;
@@ -1314,44 +1235,18 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 			word_break(cc, ch, 0);
 
 			if (ch->mode != MODE_POP_ON) {
-				update_line(ch);
+				update(ch);
 			}
 
 			return;
 
 		case 12:	/* Erase Displayed Memory	001 c10f  010 1100 */
-// s1, s4: EDM always before EOC
-			/* Received in text mode */
-			/*
-			if (cc->curr_chan >= 4)
-			{
-				for (i = 0; i < 2; i++ )
-				{
-					ch = &cc->channel[i + (cc->curr_chan - 4)/2];
-					erase_memory(cc, ch, 0);
-					erase_memory(cc, ch, 1);
-				}
-			}
-			else
-			{
-
-				if (ch->mode != MODE_POP_ON)
-					erase_memory(cc, ch, ch->hidden);
-
-				erase_memory(cc, ch, ch->hidden ^ 1);
-
-
-				clear(ch->pg + (ch->hidden ^ 1));
-			}*/
-
 			if (cc->curr_chan < 4) {
 				erase_memory(cc, ch, ch->hidden ^ 1);
-				ch->update_flag = 1;
-				ch->edm_flag = 1;
+				update(ch);
 			}
 			return;
 		case 14:	/* Erase Non-Displayed Memory	001 c10f  010 1110 */
-// not verified
 			erase_memory(cc, ch, ch->hidden);
 			return;
 		}
@@ -1420,7 +1315,7 @@ update_display (vbi_decoder *vbi)
 		cc_channel *ch = &cc->channel[i];
 
 		if (ch->update_flag == 1) {
-			render(&ch->pg[ch->hidden ^ 1]);
+			render(ch);
 			ch->update_flag = 0;
 		}
 	}
@@ -1773,6 +1668,7 @@ vbi_caption_init(vbi_decoder *vbi)
 		ch->pg[0].font[1] = vbi_font_descriptors;
 
 		memcpy(&ch->pg[1], &ch->pg[0], sizeof(ch->pg[1]));
+		memcpy(&ch->pg[2], &ch->pg[0], sizeof(ch->pg[2]));
 
 		if (i >= 4)
 			ch->pos_flag = 1;
@@ -1830,7 +1726,7 @@ vbi_fetch_cc_page(vbi_decoder *vbi, vbi_page *pg, vbi_pgno pgno, vbi_bool reset)
 
 	pthread_mutex_lock(&vbi->cc.mutex);
 
-	spg = ch->pg + (ch->hidden ^ 1);
+	spg = ch->pg + 2;
 
 	memcpy(pg, spg, sizeof(*pg)); /* shortcut? */
 
@@ -1864,12 +1760,12 @@ void vbi_refresh_cc(vbi_decoder *vbi)
 		for (i = 0; i < 8; i++)
 		{
 			ch = &vbi->cc.channel[i];
-			spg = ch->pg + (ch->hidden ^ 1);
+			spg = ch->pg + 2;
 			for (j = 0; j < ROWS * COLUMNS; j++)
 			{
 				if (spg->text[j].flash)
 				{
-					ch->update_flag = 1;
+					update(ch);
 					break;
 				}
 			}
