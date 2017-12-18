@@ -2240,7 +2240,9 @@ dtvcc_unicode			(unsigned int		c)
 		return 0;
 	} else if (likely (c < 0x100)) {
 		/* G0, G1 */
-		if (unlikely (0x7F == c))
+		if (unlikely (0xAD == c))
+			return 0x2D;
+		else if (unlikely (0x7F == c))
 			return 0x266A; /* music note */
 		else
 			return c;
