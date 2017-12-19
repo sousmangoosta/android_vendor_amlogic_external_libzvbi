@@ -2710,6 +2710,9 @@ dtvcc_clear_windows		(struct dtvcc_decoder *	dc,
 		memset (dw->buffer, 0, sizeof (dw->buffer));
 		memset (dw->pen, 0, sizeof(dw->pen));
 
+		dw->curr_column = 0;
+		dw->curr_row = 0;
+
 		dw->streamed = 0;
 
 		if (dw->visible)
