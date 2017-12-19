@@ -2468,6 +2468,15 @@ dtvcc_put_char			(struct dtvcc_decoder *	dc,
 
 	dw->buffer[row][column] = c;
 	dw->pen[row][column]    = dw->curr_pen.style;
+	if (c == 0x1020 || c == 0x1021)
+	{
+		if (c == 0x1020)
+			dw->buffer[row][column] = 0x20;
+		else
+			dw->buffer[row][column] = 0xA0;
+		dw->pen[row][column].bg_opacity = OPACITY_TRANSPARENT;
+		dw->pen[row][column].fg_opacity = OPACITY_TRANSPARENT;
+	}
 	//AM_DEBUG(1, "========= putchar %x %c", c, c);
 	if (dw->visible)
 		dtvcc_render(dc, ds);
