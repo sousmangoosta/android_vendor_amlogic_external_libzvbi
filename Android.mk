@@ -18,9 +18,10 @@ endif
 LOCAL_ARM_MODE := arm
 LOCAL_C_INCLUDES := external/icu4c/common
 LOCAL_C_INCLUDES := vendor/amlogic/dvb/include/am_adp
+#LOCAL_C_INCLUDES := external/dvb/include/am_adp
 LOCAL_C_INCLUDES += external/icu/icu4c/source/common
 
-LOCAL_SHARED_LIBRARIES += libicuuc liblog
+LOCAL_SHARED_LIBRARIES += libicuuc liblog libam_adp
 
 LOCAL_PRELINK_MODULE := false
 

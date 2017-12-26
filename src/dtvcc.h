@@ -40,6 +40,12 @@ enum cc_mode {
 	CC_MODE_TEXT
 };
 
+enum cc_effect_status {
+	CC_EFFECT_NONE,
+	CC_EFFECT_DISPLAY,
+	CC_EFFECT_HIDE
+};
+
 /* EIA 608-B Section 4.1. */
 #define VBI_CAPTION_CC1 1 /* primary synchronous caption service (F1) */
 #define VBI_CAPTION_CC2 2 /* special non-synchronous use captions (F1) */
@@ -365,6 +371,12 @@ struct dtvcc_window {
 
 	struct dtvcc_window_style	style;
 
+	/* Used for fade and swipe */
+	struct timespec effect_timer;
+	/* 0~100 */
+	int effect_percent;
+	enum cc_effect_status effect_status;
+
 	/* Our stuff. */
 
 	/**
@@ -384,6 +396,7 @@ struct dtvcc_window {
 
 struct dtvcc_service {
 	/* Interpretation Layer. */
+	int id;
 
 	struct dtvcc_window		window[8];
 	struct dtvcc_window             old_window[8];
@@ -403,9 +416,11 @@ struct dtvcc_service {
 	uint8_t				service_data[128];
 	unsigned int			service_data_in;
 	/* For 0x8D 0x8E delay command
-		if delay flag is set, decoder stop decoding
-		*/
+	*  if delay flag is set, decoder stop decoding
+	*/
 	struct timespec delay_timer;
+
+
 	int delay;
 	int delay_cancel;
 
@@ -519,6 +534,8 @@ extern void     vbi_decode_caption(vbi_decoder *vbi, int line, const uint8_t *bu
 extern int      get_input_offset();
 
 extern void update_service_status(struct tvcc_decoder *td);
+static vbi_bool dtvcc_carriage_return		(struct dtvcc_decoder *dc, struct dtvcc_service * ds);
+
 
 
 #endif
