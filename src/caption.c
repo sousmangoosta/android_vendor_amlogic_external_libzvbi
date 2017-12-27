@@ -1046,6 +1046,14 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 			}
 		} else {		/* Midrow Codes		001 c001  010 xxxu */
 // not verified
+			vbi_char c = ch->attr;
+
+			c.flash     = FALSE;
+			c.underline = FALSE;
+			c.unicode   = ' ';
+
+			put_char(cc, ch, c);
+
 			ch->attr.flash = FALSE;
 			ch->attr.underline = c2 & 1;
 
