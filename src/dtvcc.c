@@ -2466,6 +2466,11 @@ dtvcc_put_char			(struct dtvcc_decoder *	dc,
 	row = dw->curr_row;
 	column = dw->curr_column;
 
+	/* Add row column lock support */
+	/*AM_DEBUG(0, "put_char before ds %d cl %d rl %d col %d row %d col_curr %d row_curr %d win_col %d win_row %d",
+		ds->id, dw->column_lock, dw->row_lock, column, row, dw->curr_column, dw->curr_row,
+		dw->column_count, dw->row_count); */
+
 	/* FIXME how should we handle TEXT_TAG_NOT_DISPLAYABLE? */
 
 	dw->buffer[row][column] = c;
@@ -2488,8 +2493,40 @@ dtvcc_put_char			(struct dtvcc_decoder *	dc,
 		dw->streamed &= ~(1 << row);
 		if (!cc_timestamp_isset (&dw->timestamp_c0))
 			dw->timestamp_c0 = ds->timestamp;
+#if 1
 		if (++column >= dw->column_count)
 			return TRUE;
+#else
+	column ++;
+	/* We handle row column lock here */
+	if (column >= dw->column_count)
+	{
+		if (dw->column_lock == 1)
+		{
+			if (dw->row_lock == 1)
+			{
+				column = dw->column_count;
+				dw->buffer[row][column] = 0;
+			}
+		}
+		else
+		{
+			if (column >= CC_MAX_COLUMNS)
+			{
+				column = CC_MAX_COLUMNS;
+				dw->buffer[row][column] = 0;
+			}
+			else
+			{
+				dw->column_count = column + 1;
+			}
+		}
+	}
+	else
+	{
+		column ++;
+	}
+#endif
 		break;
 
 	case DIR_RIGHT_LEFT:
@@ -2519,7 +2556,6 @@ dtvcc_put_char			(struct dtvcc_decoder *	dc,
 
 	dw->curr_row = row;
 	dw->curr_column = column;
-
 
 	return TRUE;
 }
@@ -2716,7 +2752,8 @@ dtvcc_clear_windows		(struct dtvcc_decoder *	dc,
 		dw->curr_row = 0;
 
 		dw->streamed = 0;
-
+		dw->style.display_effect = 0;
+		dw->effect_status = 0;
 		if (dw->visible)
 			dtvcc_render(dc, ds);
 
@@ -2861,7 +2898,7 @@ dtvcc_define_window		(struct dtvcc_decoder *	dc,
 	c = buf[1];
 	dw->visible = (c >> 5) & 1;
 	dw->row_lock = (c >> 4) & 1;
-	dw->column_lock = (c >> 4) & 1;
+	dw->column_lock = (c >> 3) & 1;
 	dw->priority = c & 7;
 
 	dw->anchor_relative = anchor_relative;
@@ -2938,16 +2975,22 @@ dtvcc_display_windows		(struct dtvcc_decoder *	dc,
 		switch (c) {
 		case 0x89: /* DSW DisplayWindows */
 			dw->visible = TRUE;
+			dw->effect_status = CC_EFFECT_DISPLAY;
 			break;
 
 		case 0x8A: /* HDW HideWindows */
 			dw->visible = FALSE;
+			dw->effect_status = CC_EFFECT_HIDE;
 			break;
 
 		case 0x8B: /* TGW ToggleWindows */
 			dw->visible = was_visible ^ TRUE;
+			dw->effect_status =
+				(dw->visible == TRUE)?CC_EFFECT_DISPLAY:CC_EFFECT_HIDE;
 			break;
 		}
+
+		clock_gettime(CLOCK_REALTIME, &dw->effect_timer);
 
 		if (!was_visible) {
 			unsigned int row;
@@ -3224,6 +3267,9 @@ dtvcc_delete_windows		(struct dtvcc_decoder *	dc,
 					memset (dw->buffer, 0, sizeof (dw->buffer));
 					memset (dw->pen, 0, sizeof(dw->pen));
 					dw->visible = 0;
+					dw->effect_status = 0;
+					dw->effect_percent = 0;
+					dw->style.display_effect = 0;
 
 					changed = 1;
 				}
@@ -3814,6 +3860,7 @@ dtvcc_reset_service		(struct dtvcc_service *	ds)
 	ds->created = 0;
 	ds->delay = 0;
 	ds->delay_cancel = 0;
+
 	struct dtvcc_window *dw;
 	for (i=0;i<8;i++)
 	{
@@ -3821,7 +3868,7 @@ dtvcc_reset_service		(struct dtvcc_service *	ds)
 		ds->window[i].visible = 0;
 		memset (dw->buffer, 0, sizeof (dw->buffer));
 		memset (dw->pen, 0, sizeof(dw->pen));
-
+		dw->effect_status = 0;
 		dw->streamed = 0;
 	}
 	ds->update = 1;
@@ -3840,9 +3887,12 @@ dtvcc_reset			(struct dtvcc_decoder *	dc)
 void
 dtvcc_init		(struct dtvcc_decoder *	dc)
 {
+	int i;
 	memset(dc, 0, sizeof(struct dtvcc_decoder));
 	dtvcc_reset (dc);
 	cc_timestamp_reset (&dc->timestamp);
+	for (i=0;i<6;i++)
+		dc->service[i].id = i;
 }
 
 static void dtvcc_window_to_page(vbi_decoder *vbi, struct dtvcc_window *dw, struct vbi_page *pg)
@@ -4039,10 +4089,25 @@ static void update_service_status_internal (struct tvcc_decoder *td)
 
 		for (j = 0; j < 8; j++)
 		{
+			struct dtvcc_window *target_window;
+			target_window = &ds->window[j];
 		        /*window flash treatment */
-		        if (ds->window[j].style.window_flash)
+		        if (target_window->style.window_flash)
 		        {
-				ds->window[j].style.fill_opacity = flash?0:3;
+				target_window->style.fill_opacity = flash?0:3;
+				ds->update = 1;
+			}
+
+			/* Wipe and fade treatment */
+			if (target_window->style.display_effect != 0 &&
+				target_window->effect_status != 0)
+			{
+				target_window->effect_percent =
+					((ts_now.tv_sec - target_window->effect_timer.tv_sec) * 1000 +
+					(ts_now.tv_nsec - target_window->effect_timer.tv_nsec) / 1000000) *100/
+					(target_window->style.effect_speed * 500);
+				if (target_window->effect_percent > 100)
+					target_window->effect_percent = 100;
 				ds->update = 1;
 			}
 
@@ -4051,7 +4116,7 @@ static void update_service_status_internal (struct tvcc_decoder *td)
 			{
 				for (l =0; l<42; l++)
 				{
-					target_pen = &ds->window[j].pen[k][l];
+					target_pen = &target_window->pen[k][l];
 					if (target_pen->bg_flash)
 					{
 						target_pen->bg_opacity = flash?0:3;
