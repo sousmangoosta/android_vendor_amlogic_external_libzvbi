@@ -1148,7 +1148,7 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 
 			ch->hidden ^= 1;
 
-			erase_memory(cc, ch, ch->hidden); // yes?
+			//erase_memory(cc, ch, ch->hidden); // yes?
 			update(ch);
 
 			/*
