@@ -896,8 +896,42 @@ put_char(struct caption *cc, cc_channel *ch, vbi_char c)
 }
 
 static inline cc_channel *
-switch_channel(struct caption *cc, cc_channel *ch, int new_chan)
+switch_channel(struct caption *cc, int new_chan)
 {
+	switch (new_chan) {
+	case 0:
+	case 4:
+		cc->curr_chan_f1_d1 = new_chan;
+		break;
+	case 1:
+	case 5:
+		cc->curr_chan_f1_d2 = new_chan;
+		break;
+	case 2:
+	case 6:
+		cc->curr_chan_f2_d1 = new_chan;
+		break;
+	case 3:
+	case 7:
+		cc->curr_chan_f2_d2 = new_chan;
+		break;
+	}
+
+	switch (new_chan) {
+	case 0:
+	case 1:
+	case 4:
+	case 5:
+		cc->curr_chan_f1 = new_chan;
+		break;
+	case 2:
+	case 3:
+	case 6:
+	case 7:
+		cc->curr_chan_f2 = new_chan;
+		break;
+	}
+
 	return &cc->channel[cc->curr_chan = new_chan];
 }
 
@@ -932,7 +966,16 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 	vbi_char *c;
 	int chan, col, i;
 	int last_row;
-	chan = (cc->curr_chan & 4) + field2 * 2 + ((c1 >> 3) & 1);
+	//chan = (cc->curr_chan & 4) + field2 * 2 + ((c1 >> 3) & 1);
+
+	if (field2) {
+		chan = (c1 & 8) ? cc->curr_chan_f2_d2 : cc->curr_chan_f2_d1;
+	} else {
+		chan = (c1 & 8) ? cc->curr_chan_f1_d2 : cc->curr_chan_f1_d1;
+	}
+
+	switch_channel(cc, chan);
+
 	ch = &cc->channel[chan];
 
 	c1 &= 7;
@@ -1093,7 +1136,7 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 
 		switch (c2 & 15) {
 		case 0:		/* Resume Caption Loading	001 c10f  010 0000 */
-			ch = switch_channel(cc, ch, chan & 3);
+			ch = switch_channel(cc, chan & 3);
 
 			ch->mode = MODE_POP_ON;
 			return;
@@ -1106,7 +1149,7 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 		{
 			int roll = (c2 & 7) - 3;
 
-			ch = switch_channel(cc, ch, chan & 3);
+			ch = switch_channel(cc, chan & 3);
 
 			if (ch->mode == MODE_ROLL_UP && ch->roll == roll)
 				return;
@@ -1122,7 +1165,7 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 
 		case 9:		/* Resume Direct Captioning	001 c10f  010 1001 */
 // not verified
-			ch = switch_channel(cc, ch, chan & 3);
+			ch = switch_channel(cc, chan & 3);
 			ch->mode = MODE_PAINT_ON;
 			return;
 
@@ -1130,18 +1173,18 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 // not verified
 			erase_memory(cc, ch, ch->hidden);
 			erase_memory(cc, ch, ch->hidden ^ 1);
-			ch = switch_channel(cc, ch, chan | 4);
+			ch = switch_channel(cc, chan | 4);
 			set_cursor(ch, 1, 0);
 			erase_memory(cc, ch, ch->hidden);
 			erase_memory(cc, ch, ch->hidden ^ 1);
 			return;
 
 		case 11:	/* Resume Text Display		001 c10f  010 1011 */
-			ch = switch_channel(cc, ch, chan | 4);
+			ch = switch_channel(cc, chan | 4);
 			return;
 
 		case 15:	/* End Of Caption		001 c10f  010 1111 */
-			ch = switch_channel(cc, ch, chan & 3);
+			ch = switch_channel(cc, chan & 3);
 			ch->mode = MODE_POP_ON;
 
 			word_break(cc, ch, 1);
@@ -1249,7 +1292,7 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 			return;
 
 		case 12:	/* Erase Displayed Memory	001 c10f  010 1100 */
-			if (cc->curr_chan < 4) {
+			if (chan < 4) {
 				erase_memory(cc, ch, ch->hidden ^ 1);
 				update(ch);
 			}
@@ -1505,10 +1548,10 @@ vbi_decode_caption(vbi_decoder *vbi, int line, uint8_t *buf)
 	update_display(vbi);
 
 	if (line == 21) {
-		cc->curr_chan_f1 = cc->curr_chan;
+		//cc->curr_chan_f1 = cc->curr_chan;
 		memcpy(cc->last_f1, cc->last, sizeof(cc->last));
 	} else {
-		cc->curr_chan_f2 = cc->curr_chan;
+		//cc->curr_chan_f2 = cc->curr_chan;
 		memcpy(cc->last_f2, cc->last, sizeof(cc->last));
 	}
 
@@ -1655,6 +1698,13 @@ vbi_caption_init(vbi_decoder *vbi)
 	int i;
 
 	memset(cc, 0, sizeof(struct caption));
+
+	cc->curr_chan_f1 = 0;
+	cc->curr_chan_f2 = 2;
+	cc->curr_chan_f1_d1 = 0;
+	cc->curr_chan_f1_d2 = 1;
+	cc->curr_chan_f2_d1 = 2;
+	cc->curr_chan_f2_d2 = 3;
 
 	pthread_mutex_init(&cc->mutex, NULL);
 
