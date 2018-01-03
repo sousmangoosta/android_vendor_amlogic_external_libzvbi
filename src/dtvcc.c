@@ -2373,9 +2373,9 @@ dtvcc_caption_window		(struct dtvcc_service *	ds)
 			continue;
 		if (!ds->window[window_id].visible)
 			continue;
-		if (DIR_BOTTOM_TOP
+		/*if (DIR_BOTTOM_TOP
 		    != ds->window[window_id].style.scroll_direction)
-			continue;
+			continue; */
 		if (ds->window[window_id].priority < max_priority) {
 			dw = &ds->window[window_id];
 			max_priority = ds->window[window_id].priority;
@@ -2493,40 +2493,8 @@ dtvcc_put_char			(struct dtvcc_decoder *	dc,
 		dw->streamed &= ~(1 << row);
 		if (!cc_timestamp_isset (&dw->timestamp_c0))
 			dw->timestamp_c0 = ds->timestamp;
-#if 1
 		if (++column >= dw->column_count)
 			return TRUE;
-#else
-	column ++;
-	/* We handle row column lock here */
-	if (column >= dw->column_count)
-	{
-		if (dw->column_lock == 1)
-		{
-			if (dw->row_lock == 1)
-			{
-				column = dw->column_count;
-				dw->buffer[row][column] = 0;
-			}
-		}
-		else
-		{
-			if (column >= CC_MAX_COLUMNS)
-			{
-				column = CC_MAX_COLUMNS;
-				dw->buffer[row][column] = 0;
-			}
-			else
-			{
-				dw->column_count = column + 1;
-			}
-		}
-	}
-	else
-	{
-		column ++;
-	}
-#endif
 		break;
 
 	case DIR_RIGHT_LEFT:
@@ -3028,10 +2996,21 @@ dtvcc_carriage_return		(struct dtvcc_decoder *	dc,
 
 	switch (dw->style.scroll_direction) {
 	case DIR_LEFT_RIGHT:
-		dw->curr_row = 0;
-		if (column > 0) {
-			dw->curr_column = column - 1;
-			break;
+		if (dw->style.print_direction == DIR_BOTTOM_TOP)
+		{
+			dw->curr_row = dw->row_count - 1;
+			if (column > 0) {
+				dw->curr_column = column - 1;
+				break;
+			}
+		}
+		else
+		{
+			dw->curr_row = 0;
+			if (column > 0) {
+				dw->curr_column = column - 1;
+				break;
+			}
 		}
 		dw->streamed = (dw->streamed << 1)
 			& ~(1 << dw->column_count);
@@ -3049,10 +3028,21 @@ dtvcc_carriage_return		(struct dtvcc_decoder *	dc,
 		break;
 
 	case DIR_RIGHT_LEFT:
-		dw->curr_row = 0;
-		if (column + 1 < dw->row_count) {
-			dw->curr_column = column + 1;
-			break;
+		if (dw->style.print_direction == DIR_BOTTOM_TOP)
+		{
+			dw->curr_row = dw->row_count - 1;
+			if (column + 1 < dw->row_count) {
+				dw->curr_column = column + 1;
+				break;
+			}
+		}
+		else
+		{
+			dw->curr_row = 0;
+			if (column + 1 < dw->row_count) {
+				dw->curr_column = column + 1;
+				break;
+			}
 		}
 		dw->streamed >>= 1;
 		for (row = 0; row < dw->row_count; ++row) {
@@ -3069,10 +3059,22 @@ dtvcc_carriage_return		(struct dtvcc_decoder *	dc,
 		break;
 
 	case DIR_TOP_BOTTOM:
-		dw->curr_column = 0;
-		if (row > 0) {
-			dw->curr_row = row - 1;
-			break;
+		if (dw->style.print_direction == DIR_RIGHT_LEFT)
+		{
+			AM_DEBUG(0, "CR: print_r_l cur_col %d row %d", dw->curr_column, dw->curr_row);
+			dw->curr_column = dw->column_count - 1;
+			if (row > 0) {
+				dw->curr_row = row - 1;
+				break;
+			}
+		}
+		else
+		{
+			dw->curr_column = 0;
+			if (row > 0) {
+				dw->curr_row = row - 1;
+				break;
+			}
 		}
 		dw->streamed = (dw->streamed << 1)
 			& ~(1 << dw->row_count);
@@ -3085,10 +3087,21 @@ dtvcc_carriage_return		(struct dtvcc_decoder *	dc,
 		break;
 
 	case DIR_BOTTOM_TOP:
-		dw->curr_column = 0;
-		if (row + 1 < dw->row_count) {
-			dw->curr_row = row + 1;
-			break;
+		if (dw->style.print_direction == DIR_RIGHT_LEFT)
+		{
+			dw->curr_column = dw->column_count - 1;;
+			if (row + 1 < dw->row_count) {
+				dw->curr_row = row + 1;
+				break;
+			}
+		}
+		else
+		{
+			dw->curr_column = 0;
+			if (row + 1 < dw->row_count) {
+				dw->curr_row = row + 1;
+				break;
+			}
 		}
 		dw->streamed >>= 1;
 		memmove (&dw->buffer[0], &dw->buffer[1],
