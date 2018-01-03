@@ -3621,7 +3621,7 @@ dtvcc_decode_packet		(struct dtvcc_decoder *	dc,
 
 	/* sequence_number [2], packet_size_code [6],
 	   packet_data [n * 8] */
-#if 0
+#if 1
 	if (dc->next_sequence_number >= 0
 	    && 0 != ((dc->packet[0] ^ dc->next_sequence_number) & 0xC0)) {
 		dtvcc_reset (dc);
