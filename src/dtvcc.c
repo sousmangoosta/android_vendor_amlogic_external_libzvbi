@@ -2463,15 +2463,61 @@ dtvcc_put_char			(struct dtvcc_decoder *	dc,
 		return FALSE;
 	}
 
-	row = dw->curr_row;
 	column = dw->curr_column;
-
-	/* Add row column lock support */
-	/*AM_DEBUG(0, "put_char before ds %d cl %d rl %d col %d row %d col_curr %d row_curr %d win_col %d win_row %d",
-		ds->id, dw->column_lock, dw->row_lock, column, row, dw->curr_column, dw->curr_row,
-		dw->column_count, dw->row_count); */
+	row = dw->curr_row;
 
 	/* FIXME how should we handle TEXT_TAG_NOT_DISPLAYABLE? */
+
+	/* Add row column lock support */
+	switch (dw->style.print_direction) {
+		case DIR_LEFT_RIGHT:
+		if (column >= dw->column_count)
+		{
+			if (dw->column_lock == 1)
+			{
+				if (dw->row_lock == 0)
+				{
+					column = 0;
+					row++;
+					if (row >= dw->row_count)
+					{
+						// row moves up
+					}
+				}
+				else
+				{
+					return TRUE;
+				}
+			}
+			else
+			{
+				if (column < 32)
+				{
+					if (dw->column_no_lock_length < column + 1)
+						dw->column_no_lock_length = column + 1;
+				}
+				else
+				{
+					if (dw->row_lock == 1)
+						return TRUE;
+					else
+					{
+						column = 0;
+						row++;
+						if (row >= dw->row_count)
+						{
+							// row moves up
+						}
+					}
+				}
+			}
+		}
+		break;
+		case DIR_RIGHT_LEFT:
+		case DIR_TOP_BOTTOM:
+		case DIR_BOTTOM_TOP:
+		break;
+	}
 
 	dw->buffer[row][column] = c;
 	dw->pen[row][column]    = dw->curr_pen.style;
@@ -2493,33 +2539,26 @@ dtvcc_put_char			(struct dtvcc_decoder *	dc,
 		dw->streamed &= ~(1 << row);
 		if (!cc_timestamp_isset (&dw->timestamp_c0))
 			dw->timestamp_c0 = ds->timestamp;
-		if (++column >= dw->column_count)
-			return TRUE;
+		++column;
 		break;
 
 	case DIR_RIGHT_LEFT:
 		dw->streamed &= ~(1 << row);
 		if (!cc_timestamp_isset (&dw->timestamp_c0))
 			dw->timestamp_c0 = ds->timestamp;
-		if (column-- <= 0)
-			return TRUE;
-		break;
+		column--;
 
 	case DIR_TOP_BOTTOM:
 		dw->streamed &= ~(1 << column);
 		if (!cc_timestamp_isset (&dw->timestamp_c0))
 			dw->timestamp_c0 = ds->timestamp;
-		if (++row >= dw->row_count)
-			return TRUE;
-		break;
+		++row;
 
 	case DIR_BOTTOM_TOP:
 		dw->streamed &= ~(1 << column);
 		if (!cc_timestamp_isset (&dw->timestamp_c0))
 			dw->timestamp_c0 = ds->timestamp;
-		if (row-- <= 0)
-			return TRUE;
-		break;
+		row--;
 	}
 
 	dw->curr_row = row;
@@ -2877,6 +2916,7 @@ dtvcc_define_window		(struct dtvcc_decoder *	dc,
 	c = buf[4];
 	dw->row_count = (c & 15) + 1;
 	dw->column_count = column_count_m1 + 1;
+	dw->column_no_lock_length = 0;
 
 	c = buf[6];
 	window_style_id = (c >> 3) & 7;

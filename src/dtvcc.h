@@ -363,6 +363,7 @@ struct dtvcc_window {
 
 	vbi_bool			row_lock;
 	vbi_bool			column_lock;
+	unsigned int        column_no_lock_length;
 
 	unsigned int			curr_row;
 	unsigned int			curr_column;
