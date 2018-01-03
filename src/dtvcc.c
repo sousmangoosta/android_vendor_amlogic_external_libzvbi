@@ -2547,18 +2547,21 @@ dtvcc_put_char			(struct dtvcc_decoder *	dc,
 		if (!cc_timestamp_isset (&dw->timestamp_c0))
 			dw->timestamp_c0 = ds->timestamp;
 		column--;
+		break;
 
 	case DIR_TOP_BOTTOM:
 		dw->streamed &= ~(1 << column);
 		if (!cc_timestamp_isset (&dw->timestamp_c0))
 			dw->timestamp_c0 = ds->timestamp;
 		++row;
+		break;
 
 	case DIR_BOTTOM_TOP:
 		dw->streamed &= ~(1 << column);
 		if (!cc_timestamp_isset (&dw->timestamp_c0))
 			dw->timestamp_c0 = ds->timestamp;
 		row--;
+		break;
 	}
 
 	dw->curr_row = row;
