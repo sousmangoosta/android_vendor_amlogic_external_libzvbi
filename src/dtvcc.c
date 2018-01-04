@@ -3665,7 +3665,7 @@ dtvcc_decode_packet		(struct dtvcc_decoder *	dc,
 		   (null_fill [2], extended_service_number [6]),
 		   (Block_data [n * 8]) */
 
-		c = dc->packet[i]; 
+		c = dc->packet[i];
 		service_number = (c & 0xE0) >> 5;
 
 		//printf("srv %d\n", service_number);
@@ -3675,6 +3675,7 @@ dtvcc_decode_packet		(struct dtvcc_decoder *	dc,
 		if (0 == service_number) {
 			/* NULL Service Block Header, no more data in
 			   this Caption Channel Packet. */
+			dc->next_sequence_number = -1;
 			break;
 		}
 
