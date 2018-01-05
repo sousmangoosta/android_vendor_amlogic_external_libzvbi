@@ -987,8 +987,6 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 		if (row < 0 || !ch->mode)
 			return;
 
-		ch->pos_flag = 1;
-
 		ch->attr.underline = c2 & 1;
 		ch->attr.background = VBI_BLACK;
 		ch->attr.opacity = VBI_OPAQUE;
@@ -1137,7 +1135,7 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 		switch (c2 & 15) {
 		case 0:		/* Resume Caption Loading	001 c10f  010 0000 */
 			ch = switch_channel(cc, chan & 3);
-
+			ch->pos_flag = 1;
 			ch->mode = MODE_POP_ON;
 			return;
 
@@ -1150,6 +1148,7 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 			int roll = (c2 & 7) - 3;
 
 			ch = switch_channel(cc, chan & 3);
+			ch->pos_flag = 1;
 
 			if (ch->mode == MODE_ROLL_UP && ch->roll == roll)
 				return;
@@ -1167,6 +1166,7 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 // not verified
 			ch = switch_channel(cc, chan & 3);
 			ch->mode = MODE_PAINT_ON;
+			ch->pos_flag = 1;
 			return;
 
 		case 10:	/* Text Restart			001 c10f  010 1010 */
@@ -1174,6 +1174,7 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 			erase_memory(cc, ch, ch->hidden);
 			erase_memory(cc, ch, ch->hidden ^ 1);
 			ch = switch_channel(cc, chan | 4);
+			ch->pos_flag = 1;
 			set_cursor(ch, 1, 0);
 			erase_memory(cc, ch, ch->hidden);
 			erase_memory(cc, ch, ch->hidden ^ 1);
@@ -1181,10 +1182,13 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 
 		case 11:	/* Resume Text Display		001 c10f  010 1011 */
 			ch = switch_channel(cc, chan | 4);
+			ch->pos_flag = 1;
 			return;
 
 		case 15:	/* End Of Caption		001 c10f  010 1111 */
 			ch = switch_channel(cc, chan & 3);
+			ch->pos_flag = 1;
+
 			ch->mode = MODE_POP_ON;
 
 			word_break(cc, ch, 1);
@@ -1251,7 +1255,7 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 			if (ch == cc->channel + 5)
 				itv_separator(vbi, cc, 0);
 
-			if ((ch->row >= ROWS - 1) && (ch->mode == MODE_ROLL_UP)) {
+			if ((ch->row >= ROWS - 1) && ((ch->mode == MODE_ROLL_UP) || (ch->mode == MODE_TEXT))) {
 				roll_up(ch, 1);
 				set_cursor(ch, 1, ROWS - 1);
 				update(ch);
@@ -1388,6 +1392,8 @@ vbi_decode_caption(vbi_decoder *vbi, int line, uint8_t *buf)
 	struct caption *cc = &vbi->cc;
 	char c1 = buf[0] & 0x7F;
 	int field2 = 1, i;
+	int flash;
+	struct timespec now;
 
 	pthread_mutex_lock(&cc->mutex);
 	//AM_DEBUG(1, "vbi_data: line: %d %x %x", line, buf[0], buf[1]);
@@ -1542,6 +1548,33 @@ vbi_decode_caption(vbi_decoder *vbi, int line, uint8_t *buf)
 			c.unicode = vbi_caption_unicode(ci, /* to_upper */ FALSE);
 
 			put_char(cc, ch, c);
+		}
+	}
+
+	clock_gettime(CLOCK_REALTIME, &now);
+
+	flash = (now.tv_nsec / 250000000) & 1;
+
+	if (flash != vbi->cc.flash_state) {
+		int i, j;
+
+		vbi->cc.flash_state = flash;
+
+		for (i = 0; i < 8; i++)
+		{
+			cc_channel *ch;
+			vbi_page *spg;
+
+			ch = &vbi->cc.channel[i];
+			spg = ch->pg + 2;
+			for (j = 0; j < ROWS * COLUMNS; j++)
+			{
+				if (spg->text[j].flash)
+				{
+					update(ch);
+					break;
+				}
+			}
 		}
 	}
 
@@ -1727,9 +1760,6 @@ vbi_caption_init(vbi_decoder *vbi)
 
 		memcpy(&ch->pg[1], &ch->pg[0], sizeof(ch->pg[1]));
 		memcpy(&ch->pg[2], &ch->pg[0], sizeof(ch->pg[2]));
-
-		if (i >= 4)
-			ch->pos_flag = 1;
 	}
 
        	for (i = 0; i < 2; i++) {
