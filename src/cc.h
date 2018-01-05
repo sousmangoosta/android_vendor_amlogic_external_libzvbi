@@ -79,6 +79,10 @@ struct caption {
 	int			curr_chan;
 	int                     curr_chan_f1;
 	int                     curr_chan_f2;
+	int                     curr_chan_f1_d1;
+	int                     curr_chan_f1_d2;
+	int                     curr_chan_f2_d1;
+	int                     curr_chan_f2_d2;
 
 	vbi_char		transp_space[2];	/* caption, text mode */
 	cc_channel		channel[9];		/* caption 1-4, text 1-4, garbage */
