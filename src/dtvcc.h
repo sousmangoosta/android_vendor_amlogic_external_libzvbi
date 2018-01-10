@@ -424,7 +424,6 @@ struct dtvcc_service {
 
 	int delay;
 	int delay_cancel;
-
 	/** The time when we last received data for this service. */
 	struct cc_timestamp		timestamp;
 };

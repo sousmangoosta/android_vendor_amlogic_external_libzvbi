@@ -3928,6 +3928,7 @@ dtvcc_reset_service		(struct dtvcc_service *	ds)
 		dw->effect_status = 0;
 		dw->streamed = 0;
 	}
+
 	ds->update = 1;
 	cc_timestamp_reset (&ds->timestamp);
 }
@@ -4122,6 +4123,8 @@ static void update_service_status_internal (struct tvcc_decoder *td)
 		struct program *pr;
 		vbi_bool success;
 		ds = &decoder->service[i];
+		if (ds->created == 0)
+			continue;
 		/* Check every effect */
 		if (ds->delay)
 		{
@@ -4148,9 +4151,11 @@ static void update_service_status_internal (struct tvcc_decoder *td)
 		{
 			struct dtvcc_window *target_window;
 			target_window = &ds->window[j];
-		        /*window flash treatment */
-		        if (target_window->style.window_flash)
-		        {
+			if (target_window->visible == 0)
+				continue;
+	        /*window flash treatment */
+	        if (target_window->style.window_flash)
+	        {
 				target_window->style.fill_opacity = flash?0:3;
 				ds->update = 1;
 			}
@@ -4199,6 +4204,8 @@ update_display (struct tvcc_decoder *td)
 
 	for (i = 0; i < N_ELEMENTS(td->dtvcc.service); i ++) {
 		struct dtvcc_service *ds = &td->dtvcc.service[i];
+		if (ds->created == 0)
+			continue;
 
 		if (ds->update) {
 			struct vbi_event event;
@@ -4211,7 +4218,6 @@ update_display (struct tvcc_decoder *td)
 
 			vbi_send_event(td->vbi, &event);
 			pthread_mutex_lock(&td->mutex);
-
 			ds->update = 0;
 		}
 	}
