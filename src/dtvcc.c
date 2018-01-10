@@ -4233,7 +4233,7 @@ tvcc_decode_data			(struct tvcc_decoder *td,
 {
 	unsigned int process_cc_data_flag;
 	unsigned int cc_count;
-	unsigned int i;
+	unsigned int i, max_cc_count;
 	vbi_bool dtvcc;
 	struct timeval now;
 
@@ -4264,6 +4264,8 @@ tvcc_decode_data			(struct tvcc_decoder *td,
 	pthread_mutex_lock(&td->mutex);
 
 	//printf("cc count %d\n", cc_count);
+	max_cc_count = (n_bytes - 3)/3;
+	cc_count = (cc_count > max_cc_count)?max_cc_count:cc_count;
 
 	for (i = 0; i < cc_count; ++i) {
 		unsigned int b0;
