@@ -1171,8 +1171,6 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 
 		case 10:	/* Text Restart			001 c10f  010 1010 */
 // not verified
-			erase_memory(cc, ch, ch->hidden);
-			erase_memory(cc, ch, ch->hidden ^ 1);
 			ch = switch_channel(cc, chan | 4);
 			ch->pos_flag = 1;
 			set_cursor(ch, 1, 0);
@@ -1550,7 +1548,7 @@ vbi_decode_caption(vbi_decoder *vbi, int line, uint8_t *buf)
 			put_char(cc, ch, c);
 		}
 	}
-
+#if 0
 	clock_gettime(CLOCK_REALTIME, &now);
 
 	flash = (now.tv_nsec / 250000000) & 1;
@@ -1577,6 +1575,7 @@ vbi_decode_caption(vbi_decoder *vbi, int line, uint8_t *buf)
 			}
 		}
 	}
+#endif
 
 	update_display(vbi);
 
@@ -1862,6 +1861,24 @@ void vbi_refresh_cc(vbi_decoder *vbi)
 		update_display(vbi);
 	}
 
+	pthread_mutex_unlock(&vbi->cc.mutex);
+}
+
+void vbi_caption_reset(vbi_decoder *vbi)
+{
+	cc_channel *ch;
+	vbi_page *spg;
+	int i, j;
+
+	pthread_mutex_lock(&vbi->cc.mutex);
+	for (i=0; i<9; i++)
+	{
+		for (j=0; j<3; j++)
+		{
+			ch = &vbi->cc.channel[i];
+			erase_memory(&vbi->cc, ch, j);
+		}
+	}
 	pthread_mutex_unlock(&vbi->cc.mutex);
 }
 
