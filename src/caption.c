@@ -1049,7 +1049,7 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 		ch->attr.opacity = (c2 & 1) ? VBI_SEMI_TRANSPARENT : VBI_OPAQUE;
 		ch->attr.background = palette_mapping[(c2 >> 1) & 7];
 
-		for (i = 0; i < 2; i ++) {
+		for (i = 1; i <= 2; i ++) {
 			int col = ch->col - i;
 
 			if ((col > 0) && (col < COLUMNS - 1)) {
