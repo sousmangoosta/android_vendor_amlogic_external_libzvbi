@@ -1301,6 +1301,7 @@ caption_command(vbi_decoder *vbi, struct caption *cc,
 			return;
 		case 14:	/* Erase Non-Displayed Memory	001 c10f  010 1110 */
 			erase_memory(cc, ch, ch->hidden);
+			erase_memory(cc, ch, ch->hidden ^ 1);
 			return;
 		}
 
