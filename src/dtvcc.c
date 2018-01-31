@@ -359,7 +359,7 @@ cc_channel_num			(struct cc_decoder *	cd,
    receipt of a PAC during roll-up captioning. In that case, if the
    base row designated in the PAC is not the same as the current base
    row, the display shall be moved immediately to the new base
-   row. [...] 
+   row. [...]
 
 
 cc_channel_num                  (struct cc_decoder *    cd,
@@ -2033,16 +2033,16 @@ static int webtv_check(struct caption_recorder *cr, char * buf,int len)
 	unsigned short  csum=0;
 	char temp[9];
 	int nbytes=0;
-	
+
 	while (buf[0]!='<' && len > 6)  //search for the start
 	{
 		buf++; len--;
 	}
-	
+
 	if (len == 6) //failure to find start
 		return 0;
-				
-	
+
+
 	while (nbytes+6 <= len)
 	{
 		//look for end of object checksum, it's enclosed in []'s and there shouldn't be any [' after
@@ -2053,7 +2053,7 @@ static int webtv_check(struct caption_recorder *cr, char * buf,int len)
 	}
 	if (nbytes+6>len) //failure to find end
 		return 0;
-	
+
 	nwords = nbytes >> 1; sum = 0;
 
 	//add up all two byte words
@@ -2184,7 +2184,7 @@ dtvcc_g2 [96] = {
 static vbi_rgba
 dtvcc_color_map[8] = {
 	VBI_RGBA(0x00, 0x00, 0x00), VBI_RGBA(0xFF, 0x00, 0x00),
-	VBI_RGBA(0x00, 0xFF, 0x00), VBI_RGBA(0xFF, 0xFF, 0x00),	
+	VBI_RGBA(0x00, 0xFF, 0x00), VBI_RGBA(0xFF, 0xFF, 0x00),
 	VBI_RGBA(0x00, 0x00, 0xFF), VBI_RGBA(0xFF, 0x00, 0xFF),
 	VBI_RGBA(0x00, 0xFF, 0xFF), VBI_RGBA(0xFF, 0xFF, 0xFF)
 };
@@ -2196,11 +2196,11 @@ dtvcc_set_page_color_map(vbi_decoder *vbi, vbi_page *pg)
 	vbi_transp_colormap(vbi, pg->color_map,	dtvcc_color_map, 8);
 }
 
-static vbi_color 
+static vbi_color
 dtvcc_map_color(dtvcc_color c)
 {
 	vbi_color ret = VBI_BLACK;
-	
+
 	c &= 0x2A;
 	switch(c){
 		case 0:
@@ -2417,7 +2417,7 @@ dtvcc_stream_event		(struct dtvcc_decoder *	dc,
 
 
 	dtvcc_render(dc, ds);
-	
+
 	/* TO DO. */
 	CLEAR (ac);
 	ac.foreground = VBI_WHITE;
@@ -3550,7 +3550,7 @@ dtvcc_decode_syntactic_elements	(struct dtvcc_decoder *	dc,
 #endif
 	while (n_bytes > 0) {
 		unsigned int se_length;
-		
+
 		//printf("dec se %02x\n", buf[0]);
 
 		if (!dtvcc_decode_se (dc, ds,
@@ -3608,6 +3608,7 @@ dtvcc_decode_packet		(struct dtvcc_decoder *	dc,
 	unsigned int packet_size_code;
 	unsigned int packet_size;
 	unsigned int i;
+	int sequence_number;
 
 #if 0
 	printf("%d dtvcc decode packet %d: ", get_input_offset(), dc->packet_size);
@@ -3625,14 +3626,15 @@ dtvcc_decode_packet		(struct dtvcc_decoder *	dc,
 	/* sequence_number [2], packet_size_code [6],
 	   packet_data [n * 8] */
 #if 1
+	sequence_number = dc->packet[0]>>6;
 	if (dc->next_sequence_number >= 0
-	    && 0 != ((dc->packet[0] ^ dc->next_sequence_number) & 0xC0)) {
+	    && sequence_number != dc->next_sequence_number) {
 		dtvcc_reset (dc);
 		return;
 	}
 #endif
-	dc->next_sequence_number = dc->packet[0] + 0x40;
-
+	dc->next_sequence_number = (sequence_number+1)&3;
+	//AM_DEBUG(0, "sn %d nsn %d", sequence_number, dc->next_sequence_number);
 	packet_size_code = dc->packet[0] & 0x3F;
 	packet_size = 128;
 	if (packet_size_code > 0)
