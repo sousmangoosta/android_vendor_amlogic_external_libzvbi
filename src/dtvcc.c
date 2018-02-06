@@ -4206,8 +4206,8 @@ update_display (struct tvcc_decoder *td)
 
 	for (i = 0; i < N_ELEMENTS(td->dtvcc.service); i ++) {
 		struct dtvcc_service *ds = &td->dtvcc.service[i];
-		if (ds->created == 0)
-			continue;
+		//if (ds->created == 0)
+		//		continue;
 
 		if (ds->update) {
 			struct vbi_event event;
