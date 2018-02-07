@@ -35,6 +35,7 @@
 #include "dtvcc.h"
 #include "am_debug.h"
 
+
 #define elements(array) (sizeof(array) / sizeof(array[0]))
 
 #define LOG_TAG    "ZVBI"
@@ -3938,8 +3939,11 @@ dtvcc_reset_service		(struct dtvcc_service *	ds)
 void
 dtvcc_reset			(struct dtvcc_decoder *	dc)
 {
-	dtvcc_reset_service (&dc->service[0]);
-	dtvcc_reset_service (&dc->service[1]);
+	int i;
+
+	for (i=0; i<N_ELEMENTS(dc->service); i++)
+		dtvcc_reset_service (&dc->service[i]);
+
 	dc->packet_size = 0;
 	dc->next_sequence_number = -1;
 }
