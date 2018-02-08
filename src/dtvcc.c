@@ -4161,10 +4161,7 @@ static void update_service_status_internal (struct tvcc_decoder *td)
 				continue;
 	        /*window flash treatment */
 	        if (target_window->style.window_flash)
-	        {
-				target_window->style.fill_opacity = flash?0:3;
 				ds->update = 1;
-			}
 
 			/* Wipe and fade treatment */
 			if (target_window->style.display_effect != 0 &&
@@ -4182,19 +4179,13 @@ static void update_service_status_internal (struct tvcc_decoder *td)
 			/* Pen flash treatment */
 			for (k = 0; k < 16; k++)
 			{
-				for (l =0; l<42; l++)
+				for (l=0; l<42; l++)
 				{
 					target_pen = &target_window->pen[k][l];
 					if (target_pen->bg_flash)
-					{
-						target_pen->bg_opacity = flash?0:3;
 						ds->update = 1;
-					}
 					if (target_pen->fg_flash)
-					{
-						target_pen->fg_opacity = flash?0:3;
 						ds->update = 1;
-					}
 				}
 			}
 	        }
