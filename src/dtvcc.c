@@ -3843,6 +3843,11 @@ dtvcc_try_decode_packet		(struct dtvcc_decoder *	dc,
 
 				ds = &dc->service[service_number - 1];
 				in = ds->service_data_in;
+				if (block_size + in > 128)
+				{
+					AM_DEBUG(0, "Unexpect data length, warn");
+					block_size = 128 - in;
+				}
 				memcpy (ds->service_data + in,
 						p + header_size,
 						block_size);
@@ -3873,6 +3878,11 @@ dtvcc_try_decode_packet		(struct dtvcc_decoder *	dc,
 
 					ds = &dc->service[service_number - 1];
 					in = ds->service_data_in;
+					if (parsed + in > 128)
+					{
+						parsed = 128 - in;
+						AM_DEBUG(0, "Unexpect data length, warn");
+					}
 					memcpy (ds->service_data + in,
 							p + header_size,
 							parsed);
@@ -4246,17 +4256,10 @@ tvcc_decode_data			(struct tvcc_decoder *td,
 	dtvcc = FALSE;
 
 #if 0
-	printf("tvcc decode %d:\n", n_bytes);
-	{
-		int i;
-
-		for (i = 0; i < n_bytes; i ++) {
-			printf("%02x ", buf[i]);
-			if ((i + 1) % 16 == 0)
-				printf("\n");
-		}
-		printf("\n");
-	}
+	char dbuff[1024];
+	for (i=0; i<n_bytes; i++)
+		sprintf(dbuff + 3*i, " %02x", buf[i]);
+	AM_DEBUG(0, "incoming data: %s", dbuff);
 #endif
 	pthread_mutex_lock(&td->mutex);
 
