@@ -2234,7 +2234,7 @@ dtvcc_map_color(dtvcc_color c)
 }
 
 unsigned int
-dtvcc_unicode			(unsigned int		c)
+dtvcc_unicode_real			(unsigned int		c)
 {
 	if (unlikely (0 == (c & 0x60))) {
 		/* C0, C1, C2, C3 */
@@ -2260,6 +2260,16 @@ dtvcc_unicode			(unsigned int		c)
 	}
 
 	return 0;
+}
+
+unsigned int
+dtvcc_unicode			(unsigned int		c)
+{
+	unsigned int uc = dtvcc_unicode_real(c);
+	if (uc == 0)
+		uc = '_';
+
+	return uc;
 }
 
 static void
