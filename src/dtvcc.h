@@ -347,6 +347,7 @@ struct dtvcc_window {
 	uint16_t			buffer[16][42];
 	struct dtvcc_pen_style          pen[16][42];
 	int row_start[16];
+	int latest_cmd_cr;
 
 	vbi_bool			visible;
 

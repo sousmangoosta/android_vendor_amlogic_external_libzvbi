@@ -2465,7 +2465,6 @@ dtvcc_put_char			(struct dtvcc_decoder *	dc,
 	dc = dc; /* unused */
 
 	dw = ds->curr_window;
-
 	//printf("putchar %c\n", c);
 
 	if (NULL == dw) {
@@ -2473,6 +2472,7 @@ dtvcc_put_char			(struct dtvcc_decoder *	dc,
 		//AM_DEBUG(1, "================ window null !!!!!");
 		return FALSE;
 	}
+	dw->latest_cmd_cr = 0;
 
 	column = dw->curr_column;
 	row = dw->curr_row;
@@ -2587,8 +2587,9 @@ dtvcc_set_pen_location		(struct dtvcc_decoder *	dc,
 				 const uint8_t *	buf)
 {
 	struct dtvcc_window *dw;
-	unsigned int row;
-	unsigned int column;
+	int row;
+	int column;
+	int off;
 
 	dw = ds->curr_window;
 	if (NULL == dw) {
@@ -2615,13 +2616,156 @@ dtvcc_set_pen_location		(struct dtvcc_decoder *	dc,
 	if (column > dw->column_count)
 		column = dw->column_count - 1;
 
-	if (row != dw->curr_row) {
-		dtvcc_stream_event (dc, ds, dw, dw->curr_row);
-	}
+//	if ((row == dw->curr_row) && (column == dw->curr_column))
+//		return TRUE;
+
+	dtvcc_stream_event (dc, ds, dw, dw->curr_row);
 
 	/* FIXME there's more. */
 	dw->curr_row = row;
 	dw->curr_column = column;
+
+	if (dw->curr_column == 0 && dw->latest_cmd_cr == 1)
+	{
+		switch (dw->style.scroll_direction) {
+			case DIR_LEFT_RIGHT:
+				for (column = 0; column <= dw->curr_column; column ++) {
+					int empty = 1;
+					for ( row = 0; row < dw->row_count; row ++) {
+						if (dw->buffer[row][column]) {
+							empty = 0;
+							break;
+						}
+					}
+					if (!empty)
+						break;
+				}
+
+				off = dw->curr_column - column + 1;
+
+				if (off) {
+					for (column = dw->column_count - 1; column > dw->curr_column; column --) {
+						for (row = 0; row < dw->row_count; row ++) {
+							dw->buffer[row][column] =
+								dw->buffer[row][column - off];
+							dw->pen[row][column] =
+								dw->pen[row][column - off];
+
+						}
+					}
+					for (column = 0; column <= dw->curr_column; column ++) {
+						for (row = 0; row < dw->row_count; row ++) {
+							dw->buffer[row][column] = 0;
+							memset(&dw->pen[row][column], 0, sizeof(dw->pen[0][0]));
+						}
+					}
+				}
+				break;
+
+			case DIR_RIGHT_LEFT:
+				for (column = dw->column_count - 1; column >= dw->curr_column; column --) {
+					int empty = 1;
+					for ( row = 0; row < dw->row_count; row ++) {
+						if (dw->buffer[row][column]) {
+							empty = 0;
+							break;
+						}
+					}
+					if (!empty)
+						break;
+				}
+
+				off = column - dw->curr_column + 1;
+
+				if (off) {
+					for (column = 0; column < dw->curr_column; column ++) {
+						for (row = 0; row < dw->row_count; row ++) {
+							dw->buffer[row][column] =
+								dw->buffer[row][column + off];
+							dw->pen[row][column] =
+								dw->pen[row][column + off];
+
+						}
+					}
+					for (column = dw->curr_column; column < dw->column_count; column ++) {
+						for (row = 0; row < dw->row_count; row ++) {
+							dw->buffer[row][column] = 0;
+							memset(&dw->pen[row][column], 0, sizeof(dw->pen[0][0]));
+						}
+					}
+				}
+				break;
+
+			case DIR_TOP_BOTTOM:
+				for (row = 0; row <= dw->curr_row; row ++) {
+					int empty = 1;
+					for ( column = 0; column < dw->column_count; column ++) {
+						if (dw->buffer[row][column]) {
+							empty = 0;
+							break;
+						}
+					}
+					if (!empty)
+						break;
+				}
+
+				off = dw->curr_row - row + 1;
+
+				if (off) {
+					for (row = dw->row_count - 1; row > dw->curr_row; row --) {
+						for (column = 0; column < dw->column_count; column ++) {
+							dw->buffer[row][column] =
+								dw->buffer[row - off][column];
+							dw->pen[row][column] =
+								dw->pen[row - off][column];
+
+						}
+					}
+					for (row = 0; row <= dw->curr_row; row ++) {
+						for (column = 0; column < dw->column_count; column ++) {
+							dw->buffer[row][column] = 0;
+							memset(&dw->pen[row][column], 0, sizeof(dw->pen[0][0]));
+						}
+					}
+				}
+				break;
+
+			case DIR_BOTTOM_TOP:
+				for (row = dw->row_count - 1; row >= dw->curr_row; row --) {
+					int empty = 1;
+					for ( column = 0; column < dw->column_count; column ++) {
+						if (dw->buffer[row][column]) {
+							empty = 0;
+							break;
+						}
+					}
+					if (!empty)
+						break;
+				}
+
+				off = row - dw->curr_row + 1;
+
+				if (off) {
+					for (row = 0; row < dw->curr_row; row ++) {
+						for (column = 0; column < dw->column_count; column ++) {
+							dw->buffer[row][column] =
+								dw->buffer[row + off][column];
+							dw->pen[row][column] =
+								dw->pen[row + off][column];
+
+						}
+					}
+					for (row = dw->curr_row; row < dw->row_count; row ++) {
+						for (column = 0; column < dw->column_count; column ++) {
+							dw->buffer[row][column] = 0;
+							memset(&dw->pen[row][column], 0, sizeof(dw->pen[0][0]));
+						}
+					}
+				}
+				break;
+		}
+		dw->latest_cmd_cr = 0;
+	}
 
 	return TRUE;
 }
@@ -3047,6 +3191,7 @@ dtvcc_carriage_return		(struct dtvcc_decoder *	dc,
 
 	row = dw->curr_row;
 	column = dw->curr_column;
+	dw->latest_cmd_cr = 1;
 
 	switch (dw->style.scroll_direction) {
 	case DIR_LEFT_RIGHT:
@@ -3513,7 +3658,7 @@ dtvcc_decode_se			(struct dtvcc_decoder *	dc,
 	}
 
 	/* CEA 708-C defines no C2 or C3 commands. */
-
+	ds->curr_window->latest_cmd_cr = 0;
 	if ((int8_t) c >= 0) {
 		/* C2 code. */
 		*se_length = (c >> 3) + 2;
@@ -3946,6 +4091,7 @@ dtvcc_reset_service		(struct dtvcc_service *	ds)
 	{
 		dw = &ds->window[i];
 		ds->window[i].visible = 0;
+		ds->window[i].latest_cmd_cr = 0;
 		memset (dw->buffer, 0, sizeof (dw->buffer));
 		memset (dw->pen, 0, sizeof(dw->pen));
 		dw->effect_status = 0;
