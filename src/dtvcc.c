@@ -2502,7 +2502,7 @@ dtvcc_put_char			(struct dtvcc_decoder *	dc,
 			}
 			else
 			{
-				if (column < CC_MAX_COLUMNS)
+				if (column < 42)
 				{
 					if (dw->column_no_lock_length < column + 1)
 						dw->column_no_lock_length = column + 1;
@@ -2611,11 +2611,18 @@ dtvcc_set_pen_location		(struct dtvcc_decoder *	dc,
 		return FALSE;
 	}
 
-	if (row > dw->row_count)
-		row = dw->row_count - 1;
-	if (column > dw->column_count)
-		column = dw->column_count - 1;
-
+	if (dw->row_lock == 1)
+	{
+		if (row > dw->row_count)
+			row = dw->row_count - 1;
+		if (column > dw->column_count)
+			column = dw->column_count - 1;
+	}
+	else
+	{
+		if (row != 0)
+			row = dw->curr_row + 1;
+	}
 //	if ((row == dw->curr_row) && (column == dw->curr_column))
 //		return TRUE;
 
@@ -3542,6 +3549,7 @@ dtvcc_command			(struct dtvcc_decoder *	dc,
 {
 	unsigned int c;
 	unsigned int window_id;
+
 
 	c = buf[0];
 	if ((int8_t) c < 0) {
