@@ -2502,7 +2502,7 @@ dtvcc_put_char			(struct dtvcc_decoder *	dc,
 			}
 			else
 			{
-				if (column < 32)
+				if (column < CC_MAX_COLUMNS)
 				{
 					if (dw->column_no_lock_length < column + 1)
 						dw->column_no_lock_length = column + 1;
@@ -2517,6 +2517,7 @@ dtvcc_put_char			(struct dtvcc_decoder *	dc,
 						row++;
 						if (row >= dw->row_count)
 						{
+							dw->row_no_lock_length = row + 1;
 							// row moves up
 						}
 					}
@@ -2529,7 +2530,6 @@ dtvcc_put_char			(struct dtvcc_decoder *	dc,
 		case DIR_BOTTOM_TOP:
 		break;
 	}
-
 	dw->buffer[row][column] = c;
 	dw->pen[row][column]    = dw->curr_pen.style;
 	if (c == 0x1020 || c == 0x1021)
