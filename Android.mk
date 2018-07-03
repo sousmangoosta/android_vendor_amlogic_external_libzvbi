@@ -18,6 +18,7 @@ endif
 LOCAL_ARM_MODE := arm
 LOCAL_C_INCLUDES := external/icu4c/common
 LOCAL_C_INCLUDES := vendor/amlogic/dvb/include/am_adp
+LOCAL_C_INCLUDES := vendor/amlogic/external/dvb/include/am_adp
 #LOCAL_C_INCLUDES := external/dvb/include/am_adp
 LOCAL_C_INCLUDES += external/icu/icu4c/source/common
 
