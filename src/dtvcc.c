@@ -2461,12 +2461,9 @@ dtvcc_put_char			(struct dtvcc_decoder *	dc,
 	struct dtvcc_window *dw;
 	unsigned int row;
 	unsigned int column,i;
-
 	dc = dc; /* unused */
 
 	dw = ds->curr_window;
-	//printf("putchar %c\n", c);
-
 	if (NULL == dw) {
 		ds->error_line = __LINE__;
 		//AM_DEBUG(1, "================ window null !!!!!");
@@ -2478,7 +2475,6 @@ dtvcc_put_char			(struct dtvcc_decoder *	dc,
 	row = dw->curr_row;
 
 	/* FIXME how should we handle TEXT_TAG_NOT_DISPLAYABLE? */
-
 	/* Add row column lock support */
 	switch (dw->style.print_direction) {
 		case DIR_LEFT_RIGHT:
@@ -2486,21 +2482,24 @@ dtvcc_put_char			(struct dtvcc_decoder *	dc,
 		{
 			if (dw->column_lock == 1)
 			{
-				if (dw->row_lock == 0)
+				if (dw->row_lock == 0) //rl 0 cl 1
 				{
 					column = 0;
 					row++;
 					if (row >= dw->row_count)
 					{
 						// row moves up
+						memmove(dw->buffer, &dw->buffer[1][0], sizeof(dw->buffer[0])*(dw->row_count));
+						memmove(dw->pen, &dw->pen[1][0], sizeof(dw->pen[0])*(dw->row_count));
+						row = dw->row_count - 1;
 					}
 				}
-				else
+				else //rl 1 cl 1
 				{
 					return TRUE;
 				}
 			}
-			else
+			else //cl 0
 			{
 				if (column < 42)
 				{
@@ -2511,14 +2510,17 @@ dtvcc_put_char			(struct dtvcc_decoder *	dc,
 				{
 					if (dw->row_lock == 1)
 						return TRUE;
-					else
+					else //cl 0 rl 0
 					{
 						column = 0;
 						row++;
 						if (row >= dw->row_count)
 						{
-							dw->row_no_lock_length = row + 1;
 							// row moves up
+							memmove(dw->buffer, &dw->buffer[1][0], sizeof(dw->buffer[0])*(dw->row_count));
+							memmove(dw->pen, &dw->pen[1][0], sizeof(dw->pen[0])*(dw->row_count));
+							row = dw->row_count - 1;
+							dw->row_no_lock_length = row;
 						}
 					}
 				}
@@ -2541,7 +2543,6 @@ dtvcc_put_char			(struct dtvcc_decoder *	dc,
 		dw->pen[row][column].bg_opacity = OPACITY_TRANSPARENT;
 		dw->pen[row][column].fg_opacity = OPACITY_TRANSPARENT;
 	}
-	//AM_DEBUG(1, "========= putchar %x %c", c, c);
 	if (dw->visible)
 		dtvcc_render(dc, ds);
 
@@ -2577,7 +2578,6 @@ dtvcc_put_char			(struct dtvcc_decoder *	dc,
 
 	dw->curr_row = row;
 	dw->curr_column = column;
-
 	return TRUE;
 }
 
@@ -2606,23 +2606,11 @@ dtvcc_set_pen_location		(struct dtvcc_decoder *	dc,
 
 	column = buf[2];
 	/* We also check the top two zero bits. */
-	if (column >= 42) {
+	if (column >= 42 || row >= 16) {
 		ds->error_line = __LINE__;
 		return FALSE;
 	}
 
-	if (dw->row_lock == 1)
-	{
-		if (row > dw->row_count)
-			row = dw->row_count - 1;
-		if (column > dw->column_count)
-			column = dw->column_count - 1;
-	}
-	else
-	{
-		if (row != 0)
-			row = dw->curr_row + 1;
-	}
 //	if ((row == dw->curr_row) && (column == dw->curr_column))
 //		return TRUE;
 
@@ -3465,7 +3453,6 @@ dtvcc_delete_windows		(struct dtvcc_decoder *	dc,
 	struct dtvcc_window *dw;
 	int i;
 	int changed = 0;
-
 	for (i = 0; i < N_ELEMENTS(ds->window); i ++) {
 		dw = &ds->window[i];
 
@@ -3560,7 +3547,7 @@ dtvcc_command			(struct dtvcc_decoder *	dc,
 
 	if (*se_length > n_bytes) {
 		ds->error_line = __LINE__;
-		return TRUE;
+		return FALSE;
 	}
 	switch (c) {
 	case 0x08: /* BS Backspace */
@@ -4114,7 +4101,6 @@ void
 dtvcc_reset			(struct dtvcc_decoder *	dc)
 {
 	int i;
-
 	for (i=0; i<N_ELEMENTS(dc->service); i++)
 		dtvcc_reset_service (&dc->service[i]);
 
@@ -4445,7 +4431,7 @@ tvcc_decode_data			(struct tvcc_decoder *td,
 		cc_data_1 = buf[4 + i * 3];
 		cc_data_2 = buf[5 + i * 3];
 
-		//printf("cc type %02x %02x %02x %02x\n", cc_type, cc_valid, cc_data_1, cc_data_2);
+		AM_DEBUG(4,"cc type %02x %02x %02x %02x\n", cc_type, cc_valid, cc_data_1, cc_data_2);
 
 		switch (cc_type) {
 		case NTSC_F1:
