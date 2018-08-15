@@ -2,6 +2,7 @@ LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 
 LOCAL_MODULE    := libzvbi
+LOCAL_VENDOR_MODULE := true
 LOCAL_MODULE_TAGS := optional
 LOCAL_SRC_FILES := src/bit_slicer.c src/cache.c src/caption.c src/conv.c src/dvb_mux.c src/dvb_demux.c src/exp-html.c \
 	src/exp-templ.c src/exp-txt.c src/exp-vtx.c src/exp-gfx.c src/export.c src/hamm.c src/idl_demux.c src/io.c src/io-bktr.c src/io-dvb.c \
@@ -21,8 +22,12 @@ LOCAL_C_INCLUDES := vendor/amlogic/dvb/include/am_adp
 LOCAL_C_INCLUDES += vendor/amlogic/external/dvb/include/am_adp
 LOCAL_C_INCLUDES += external/icu/icu4c/source/common
 
+ifeq ($(shell test $(PLATFORM_SDK_VERSION) -ge 28&& echo OK),OK)
+LOCAL_STATIC_LIBRARIES += libicuuc_vendor libicuuc_stubdata_vendor
+LOCAL_SHARED_LIBRARIES += liblog libam_adp
+else
 LOCAL_SHARED_LIBRARIES += libicuuc liblog libam_adp
-
+endif
 LOCAL_PRELINK_MODULE := false
 
 include $(BUILD_SHARED_LIBRARY)
