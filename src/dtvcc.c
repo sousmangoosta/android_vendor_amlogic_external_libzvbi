@@ -2620,7 +2620,8 @@ dtvcc_set_pen_location		(struct dtvcc_decoder *	dc,
 	dw->curr_row = row;
 	dw->curr_column = column;
 
-	if (dw->curr_column == 0 && dw->latest_cmd_cr == 1)
+	//if (dw->curr_column == 0 && dw->latest_cmd_cr == 1) If latest cmd is cr, no need to judge column
+	if (dw->latest_cmd_cr == 1)
 	{
 		switch (dw->style.scroll_direction) {
 			case DIR_LEFT_RIGHT:
