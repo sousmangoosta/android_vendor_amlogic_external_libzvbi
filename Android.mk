@@ -18,14 +18,14 @@ endif
 
 LOCAL_ARM_MODE := arm
 LOCAL_C_INCLUDES := external/icu4c/common
-LOCAL_C_INCLUDES := vendor/amlogic/dvb/include/am_adp
-LOCAL_C_INCLUDES += vendor/amlogic/external/dvb/include/am_adp
-LOCAL_C_INCLUDES += external/icu/icu4c/source/common
+LOCAL_C_INCLUDES += $(LOCAL_PATH)/../dvb/include/am_adp
 
 ifeq ($(shell test $(PLATFORM_SDK_VERSION) -ge 28&& echo OK),OK)
+LOCAL_C_INCLUDES += $(LOCAL_PATH)/../icu/icu4c/source/common
 LOCAL_STATIC_LIBRARIES += libicuuc_vendor libicuuc_stubdata_vendor
 LOCAL_SHARED_LIBRARIES += liblog libam_adp
 else
+LOCAL_C_INCLUDES += external/icu/icu4c/source/common
 LOCAL_SHARED_LIBRARIES += libicuuc liblog libam_adp
 endif
 LOCAL_PRELINK_MODULE := false
