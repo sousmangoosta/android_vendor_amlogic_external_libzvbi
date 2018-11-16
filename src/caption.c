@@ -34,14 +34,21 @@
 #include "hamm.h"
 #include "tables.h"
 #include "vbi.h"
+#ifdef ANDROID
 #include <android/log.h>
 #include "am_debug.h"
+#endif
 
 #define elements(array) (sizeof(array) / sizeof(array[0]))
 
+#ifdef ANDROID
 #define LOG_TAG    "ZVBI"
 #define LOGI(...)  __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
 #define LOGE(...)  __android_log_print(ANDROID_LOG_ERROR,LOG_TAG,__VA_ARGS__)
+#else
+#define LOGI(...) printf(...)
+#define LOGE(...) printf(...)
+#endif
 
 
 #define ITV_DEBUG(x) /* x */

@@ -33,7 +33,9 @@
 
 #include "libzvbi.h"
 #include "dtvcc.h"
+#ifdef ANDROID
 #include "am_debug.h"
+#endif
 
 
 #define elements(array) (sizeof(array) / sizeof(array[0]))

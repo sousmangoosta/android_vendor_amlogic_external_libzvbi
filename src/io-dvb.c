@@ -32,6 +32,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <stdint.h>
 
 #ifndef HAVE_S64_U64
   /* Linux 2.6.x asm/types.h defines __s64 and __u64 only
