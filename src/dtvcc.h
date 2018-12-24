@@ -431,6 +431,8 @@ struct dtvcc_service {
 };
 
 struct dtvcc_decoder {
+	char lang[12];
+	unsigned int decoder_param;
 	struct dtvcc_service		service[6];
 
 	/* Packet Layer. */
@@ -448,6 +450,7 @@ struct dtvcc_decoder {
 
 	int                             flash_state;
 	int curr_data_pgno;
+	int lang_kor;
 };
 
 /* ATSC A/53 Part 4:2007 Closed Caption Data decoder. */
@@ -510,7 +513,7 @@ struct tvcc_decoder {
 };
 unsigned int dtvcc_unicode (unsigned int c);
 
-extern void     tvcc_init(struct tvcc_decoder *td);
+extern void     tvcc_init(struct tvcc_decoder *td, char* lang, int lang_len, unsigned int decoder_param);
 
 extern void     tvcc_decode_data(struct tvcc_decoder *td, int64_t pts, const uint8_t *buf, unsigned int n_bytes);
 
@@ -520,7 +523,7 @@ extern void     tvcc_destroy(struct tvcc_decoder *td);
 
 extern void     tvcc_fetch_page(struct tvcc_decoder *td, int pgno, int *cnt, struct vbi_page *sub_pages);
 
-static void     dtvcc_init(struct dtvcc_decoder * dc);
+static void     dtvcc_init(struct dtvcc_decoder *	dc, char* lang, int lang_len, int decoder_param);
 
 extern void     dtvcc_decode_packet(struct dtvcc_decoder *dc, const struct timeval *tv, int64_t pts);
 

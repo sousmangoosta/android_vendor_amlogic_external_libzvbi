@@ -33,9 +33,20 @@
 
 #include "libzvbi.h"
 #include "dtvcc.h"
+
 #ifdef ANDROID
 #include "am_debug.h"
-#endif
+#else
+//for buildroot begin
+#undef AM_DEBUG
+#define AM_DEBUG(_level,_fmt...) \
+	do {\
+		fprintf(stderr, "AM_DEBUG:(\"%s\" %d)", __FILE__, __LINE__);\
+		fprintf(stderr, _fmt);\
+		fprintf(stderr, "\n");\
+	} while (0) \
+//for buildroot end
+#endif//end ANDROID
 
 
 #define elements(array) (sizeof(array) / sizeof(array[0]))
@@ -2238,30 +2249,34 @@ dtvcc_map_color(dtvcc_color c)
 unsigned int
 dtvcc_unicode_real			(unsigned int		c)
 {
-	if (unlikely (0 == (c & 0x60))) {
-		/* C0, C1, C2, C3 */
-		return 0;
-	} else if (likely (c < 0x100)) {
-		/* G0, G1 */
-		if (unlikely (0xAD == c))
-			return 0x2D;
-		else if (unlikely (0x7F == c))
-			return 0x266A; /* music note */
-		else
-			return c;
-	} else if (c < 0x1080) {
-		if (unlikely (c < 0x1020))
+	if (c <= 0x1200)
+	{
+		if (unlikely (0 == (c & 0x60))) {
+			/* C0, C1, C2, C3 */
 			return 0;
-		else
-			return dtvcc_g2[c - 0x1020];
-	} else if (0x10A0 == c) {
-		/* We map all G2/G3 characters which are not
-		   representable in Unicode to private code U+E900
-		   ... U+E9FF. */
-		return 0xf101; /* caption icon */
-	}
+		} else if (likely (c < 0x100)) {
+			/* G0, G1 */
+			if (unlikely (0xAD == c))
+				return 0x2D;
+			else if (unlikely (0x7F == c))
+				return 0x266A; /* music note */
+			else
+				return c;
+		} else if (c < 0x1080) {
+			if (unlikely (c < 0x1020))
+				return 0;
+			else
+				return dtvcc_g2[c - 0x1020];
+		} else if (0x10A0 == c) {
+			/* We map all G2/G3 characters which are not
+			   representable in Unicode to private code U+E900
+			   ... U+E9FF. */
+			return 0xf101; /* caption icon */
+		}
 
-	return 0;
+		return 0;
+	}
+	return c;
 }
 
 unsigned int
@@ -3046,7 +3061,18 @@ dtvcc_define_window		(struct dtvcc_decoder *	dc,
 
 	column_count_m1 = buf[5];
 	/* We also check the top two zero bits. */
-	if (unlikely (column_count_m1 >= 42)) {
+	/* For atsc eng, column maximum is 42, for kor, is 84 */
+	char* lang_korea;
+	int column_count;
+	lang_korea = strstr(dc->lang, "kor");
+	AM_DEBUG(0, "kor lang, width 84");
+
+	/* Korea has full word and half word */
+	if (lang_korea)
+		column_count = 84;
+	else
+		column_count = 42;
+	if (unlikely (column_count_m1 >= column_count)) {
 		ds->error_line = __LINE__;
 		return FALSE;
 	}
@@ -3629,8 +3655,20 @@ dtvcc_decode_se			(struct dtvcc_decoder *	dc,
 				 unsigned int		n_bytes)
 {
 	unsigned int c;
+	char* lang_korea;
+	lang_korea = strstr(dc->lang, "kor");
 
 	c = buf[0];
+	if (unlikely (c == 0x18) && lang_korea)
+	{
+		*se_length = 3;
+		c = buf[1]<<8|buf[2];
+		AM_DEBUG(0, "lang korea decode_se 0x%x", c);
+		//Conv
+
+		return dtvcc_put_char (dc, ds, c);
+	}
+
 	if (likely (0 != (c & 0x60))) {
 		/* G0/G1 character. */
 		*se_length = 1;
@@ -3656,7 +3694,8 @@ dtvcc_decode_se			(struct dtvcc_decoder *	dc,
 	}
 
 	/* CEA 708-C defines no C2 or C3 commands. */
-	ds->curr_window->latest_cmd_cr = 0;
+	if (ds->curr_window)
+		ds->curr_window->latest_cmd_cr = 0;
 	if ((int8_t) c >= 0) {
 		/* C2 code. */
 		*se_length = (c >> 3) + 2;
@@ -4115,7 +4154,7 @@ dtvcc_reset			(struct dtvcc_decoder *	dc)
 }
 
 void
-dtvcc_init		(struct dtvcc_decoder *	dc)
+dtvcc_init		(struct dtvcc_decoder *	dc, char* lang, int lang_len, int decoder_param)
 {
 	int i;
 	memset(dc, 0, sizeof(struct dtvcc_decoder));
@@ -4123,6 +4162,8 @@ dtvcc_init		(struct dtvcc_decoder *	dc)
 	cc_timestamp_reset (&dc->timestamp);
 	for (i=0;i<6;i++)
 		dc->service[i].id = i;
+	strncpy(dc->lang, lang, lang_len);
+	dc->decoder_param = decoder_param;
 }
 
 static void dtvcc_window_to_page(vbi_decoder *vbi, struct dtvcc_window *dw, struct vbi_page *pg)
@@ -4537,10 +4578,11 @@ void update_service_status(struct tvcc_decoder *td)
 	pthread_mutex_unlock(&td->mutex);
 }
 
-void tvcc_init(struct tvcc_decoder *td)
+void tvcc_init(struct tvcc_decoder *td, char* lang, int lang_len, unsigned int decoder_param)
 {
 	pthread_mutex_init(&td->mutex, NULL);
-	dtvcc_init(&td->dtvcc);
+	dtvcc_init(&td->dtvcc, lang, lang_len, decoder_param);
+	AM_DEBUG(0, "tvcc_init lang %s dp %x", lang, decoder_param);
 	cc_init(&td->cc);
 	td->vbi = vbi_decoder_new();
 }

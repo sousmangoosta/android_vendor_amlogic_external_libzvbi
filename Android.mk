@@ -2,7 +2,11 @@ LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 
 LOCAL_MODULE    := libzvbi
-LOCAL_VENDOR_MODULE := true
+ifeq ($(BOARD_COMPILE_IN_SYSTEM), true)
+    LOCAL_VENDOR_MODULE := false
+else
+    LOCAL_VENDOR_MODULE := true
+endif
 LOCAL_MODULE_TAGS := optional
 LOCAL_SRC_FILES := src/bit_slicer.c src/cache.c src/caption.c src/conv.c src/dvb_mux.c src/dvb_demux.c src/exp-html.c \
 	src/exp-templ.c src/exp-txt.c src/exp-vtx.c src/exp-gfx.c src/export.c src/hamm.c src/idl_demux.c src/io.c src/io-bktr.c src/io-dvb.c \
@@ -23,9 +27,15 @@ LOCAL_C_INCLUDES += $(LOCAL_PATH)/../dvb/include/am_adp
 LOCAL_C_INCLUDES += vendor/amlogic/dvb/include/am_adp
 
 ifeq ($(shell test $(PLATFORM_SDK_VERSION) -ge 28&& echo OK),OK)
-LOCAL_C_INCLUDES += $(LOCAL_PATH)/../icu/icu4c/source/common
-LOCAL_STATIC_LIBRARIES += libicuuc_vendor libicuuc_stubdata_vendor
-LOCAL_SHARED_LIBRARIES += liblog libam_adp
+    ifeq ($(BOARD_COMPILE_IN_SYSTEM), true)
+        LOCAL_C_INCLUDES += $(LOCAL_PATH)/../icu/icu4c/source/common
+        LOCAL_STATIC_LIBRARIES += libicuuc libicuuc_stubdata
+        LOCAL_SHARED_LIBRARIES += liblog libam_adp
+    else
+        LOCAL_C_INCLUDES += $(LOCAL_PATH)/../icu/icu4c/source/common
+        LOCAL_STATIC_LIBRARIES += libicuuc_vendor libicuuc_stubdata_vendor
+        LOCAL_SHARED_LIBRARIES += liblog libam_adp
+    endif
 else
 LOCAL_C_INCLUDES += external/icu/icu4c/source/common
 LOCAL_SHARED_LIBRARIES += libicuuc liblog libam_adp
@@ -56,17 +66,12 @@ LOCAL_C_INCLUDES := external/icu4c/common
 LOCAL_C_INCLUDES += $(LOCAL_PATH)/../../dvb/include/am_adp
 LOCAL_C_INCLUDES += $(LOCAL_PATH)/../dvb/include/am_adp
 
-ifeq ($(shell test $(PLATFORM_SDK_VERSION) -ge 28&& echo OK),OK)
 LOCAL_C_INCLUDES += $(LOCAL_PATH)/../icu/icu4c/source/common
 LOCAL_STATIC_LIBRARIES += libicuuc libicuuc_stubdata libam_adp
 LOCAL_SHARED_LIBRARIES += liblog
-else
-LOCAL_C_INCLUDES += external/icu/icu4c/source/common
-LOCAL_STATIC_LIBRARIES += libicuuc liblog libam_adp
-endif
 LOCAL_PRELINK_MODULE := false
 
 include $(BUILD_STATIC_LIBRARY)
+endif
 include $(LOCAL_PATH)/ntsc_decode/Android.mk
 #include $(LOCAL_PATH)/test/Android.mk
-endif

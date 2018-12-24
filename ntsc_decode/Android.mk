@@ -25,6 +25,7 @@ LOCAL_SHARED_LIBRARIES += libicuuc liblog
 endif
 include $(BUILD_SHARED_LIBRARY)
 
+ifeq ($(shell test $(PLATFORM_SDK_VERSION) -ge 28&& echo OK),OK)
 include $(CLEAR_VARS)
 LOCAL_SRC_FILES := am_vbi.c  \
 		sliced_vbi.c    \
@@ -41,10 +42,8 @@ LOCAL_MODULE := libntsc_decode
 LOCAL_MODULE_TAGS := optional
 LOCAL_ARM_MODE := arm
 LOCAL_CFLAGS += -D_REENTRANT -D_GNU_SOURCE -DENABLE_DVB=1 -DENABLE_V4L=1 -DENABLE_V4L2=1 -DHAVE_ICONV=1 -DPACKAGE=\"zvbi\" -DVERSION=\"0.2.33\" -DANDROID -DHAVE_GETOPT_LONG=1
-ifeq ($(shell test $(PLATFORM_SDK_VERSION) -ge 28&& echo OK),OK)
 LOCAL_STATIC_LIBRARIES += libicuuc libicuuc_stubdata
 LOCAL_SHARED_LIBRARIES += liblog
-else
-LOCAL_SHARED_LIBRARIES += libicuuc liblog
-endif
+
 include $(BUILD_STATIC_LIBRARY)
+endif
