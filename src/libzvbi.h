@@ -2,7 +2,7 @@
  *  libzvbi -- VBI decoding library
  *
  *  Copyright (C) 2000, 2001, 2002 Michael H. Schimek
- *  Copyright (C) 2000, 2001 Iñaki García Etxebarria
+ *  Copyright (C) 2000, 2001 IÃ±aki GarcÃ­a Etxebarria
  *
  *  Originally based on AleVT 1.5.1 by Edgar Toernig
  *
@@ -17,8 +17,8 @@
  *  Library General Public License for more details.
  *
  *  You should have received a copy of the GNU Library General Public
- *  License along with this library; if not, write to the 
- *  Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, 
+ *  License along with this library; if not, write to the
+ *  Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  *  Boston, MA  02110-1301  USA.
  */
 
@@ -104,23 +104,23 @@ vbi_unlock_fn			(void *			user_data);
 #endif
 
 typedef enum {
-	
+
 	VBI_LOG_ERROR		= 1 << 3,
 
 	VBI_LOG_WARNING		= 1 << 4,
 
 	VBI_LOG_NOTICE		= 1 << 5,
 
-	
+
 	VBI_LOG_INFO		= 1 << 6,
 
-	
+
 	VBI_LOG_DEBUG		= 1 << 7,
 
-	
+
 	VBI_LOG_DRIVER		= 1 << 8,
 
-	
+
 	VBI_LOG_DEBUG2		= 1 << 9,
 	VBI_LOG_DEBUG3		= 1 << 10
 } vbi_log_mask;
@@ -196,7 +196,7 @@ vbi_bcd_digits_greater		(unsigned int		bcd,
 #include <stdio.h>
 #include <inttypes.h>		/* uint16_t */
 
- 
+
 #define VBI_NUL_TERMINATED -1
 
 extern unsigned long
@@ -273,7 +273,7 @@ typedef struct {
 
 	int			reserved;
 
-	
+
 	int			cycle;
 	int                     ts_id;
 } vbi_network;
@@ -290,9 +290,9 @@ typedef enum {
 	VBI_LINK_HTTP,
 	VBI_LINK_FTP,
 	VBI_LINK_EMAIL,
-	
+
 	VBI_LINK_LID,
-	
+
 	VBI_LINK_TELEWEB
 } vbi_link_type;
 
@@ -325,10 +325,10 @@ typedef struct vbi_link {
  */
 
 typedef enum {
-	VBI_SUBT_NONE,		
-	VBI_SUBT_ACTIVE,	
-	VBI_SUBT_MATTE,		
-	VBI_SUBT_UNKNOWN	
+	VBI_SUBT_NONE,
+	VBI_SUBT_ACTIVE,
+	VBI_SUBT_MATTE,
+	VBI_SUBT_UNKNOWN
 } vbi_subt;
 
 typedef struct {
@@ -353,10 +353,10 @@ typedef enum {
 	VBI_RATING_AUTH_TV_CA_FR
 } vbi_rating_auth;
 
-#define VBI_RATING_D 0x08 
-#define VBI_RATING_L 0x04 
-#define VBI_RATING_S 0x02 
-#define VBI_RATING_V 0x01 
+#define VBI_RATING_D 0x08
+#define VBI_RATING_L 0x04
+#define VBI_RATING_S 0x02
+#define VBI_RATING_V 0x01
 
 
 extern const char *	vbi_rating_string(vbi_rating_auth auth, int id);
@@ -372,16 +372,16 @@ extern const char *	vbi_prog_type_string(vbi_prog_classf classf, int id);
 
 /* code depends on order, don't change */
 typedef enum {
-	VBI_AUDIO_MODE_NONE = 0,		
-	VBI_AUDIO_MODE_MONO,			
-	VBI_AUDIO_MODE_STEREO,			
-	VBI_AUDIO_MODE_STEREO_SURROUND,		
-	VBI_AUDIO_MODE_SIMULATED_STEREO,	
+	VBI_AUDIO_MODE_NONE = 0,
+	VBI_AUDIO_MODE_MONO,
+	VBI_AUDIO_MODE_STEREO,
+	VBI_AUDIO_MODE_STEREO_SURROUND,
+	VBI_AUDIO_MODE_SIMULATED_STEREO,
 	VBI_AUDIO_MODE_VIDEO_DESCRIPTIONS,
 	VBI_AUDIO_MODE_NON_PROGRAM_AUDIO,
 
-	VBI_AUDIO_MODE_SPECIAL_EFFECTS,		
-	VBI_AUDIO_MODE_DATA_SERVICE,		
+	VBI_AUDIO_MODE_SPECIAL_EFFECTS,
+	VBI_AUDIO_MODE_DATA_SERVICE,
 	VBI_AUDIO_MODE_UNKNOWN
 } vbi_audio_mode;
 
@@ -540,6 +540,7 @@ typedef struct vbi_event {
 	        }			ttx_page;
 		struct {
 			int			pgno;
+			int inform_pgno; //No need to update json. Just inform pg data.
 		}			caption;
 		vbi_network		network;
                 vbi_link *		trigger;
@@ -605,9 +606,9 @@ typedef enum {
 } vbi_size;
 
 typedef struct vbi_char {
-	unsigned	underline	: 1;	
-	unsigned	bold		: 1;	
-	unsigned	italic		: 1;	
+	unsigned	underline	: 1;
+	unsigned	bold		: 1;
+	unsigned	italic		: 1;
 	unsigned	flash		: 1;
 	unsigned	conceal		: 1;
 	unsigned	proportional	: 1;
@@ -726,17 +727,17 @@ typedef union {
 } vbi_option_value_ptr;
 
 typedef struct {
-  	vbi_option_type		type;	
+	vbi_option_type		type;
 
 	char *			keyword;
 
 	char *			label;
 
-	vbi_option_value	def;	
-	vbi_option_value	min;	
-	vbi_option_value	max;	
-	vbi_option_value	step;	
-	vbi_option_value_ptr	menu;	
+	vbi_option_value	def;
+	vbi_option_value	min;
+	vbi_option_value	max;
+	vbi_option_value	step;
+	vbi_option_value_ptr	menu;
 
 	char *			tooltip;
 } vbi_option_info;
@@ -1099,7 +1100,7 @@ vbi_dvb_mux_cor		(vbi_dvb_mux *		mx,
 				 unsigned int *		sliced_lines,
 				 vbi_service_set	service_mask,
 				 const uint8_t *	raw,
-				 const vbi_sampling_par *sampling_par,	 
+				 const vbi_sampling_par *sampling_par,
 				 int64_t		pts)
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
   _vbi_nonnull ((1, 2, 3, 4, 5))
@@ -1205,19 +1206,19 @@ vbi_idl_a_demux_new		(unsigned int		channel,
 
 
 typedef struct {
-	
+
 	vbi_pgno		pgno;
 
-	
+
 	unsigned int		stream;
 
-	
+
 	unsigned int		application_id;
 
-	
+
 	unsigned int		block_size;
 
-	
+
 	uint8_t			block[2048];
 } vbi_pfc_block;
 
@@ -1285,9 +1286,9 @@ typedef enum {
 	VBI_XDS_PROGRAM_CAPTION_SERVICES,
 	VBI_XDS_PROGRAM_CGMS,
 	VBI_XDS_PROGRAM_ASPECT_RATIO,
-	
+
 	VBI_XDS_PROGRAM_DATA = 0x0C,
-	
+
 	VBI_XDS_PROGRAM_MISC_DATA,
 	VBI_XDS_PROGRAM_DESCRIPTION_BEGIN = 0x10,
 	VBI_XDS_PROGRAM_DESCRIPTION_END = 0x18
@@ -1298,7 +1299,7 @@ typedef enum {
 	VBI_XDS_CHANNEL_NAME = 0x01,
 	VBI_XDS_CHANNEL_CALL_LETTERS,
 	VBI_XDS_CHANNEL_TAPE_DELAY,
-	
+
 	VBI_XDS_CHANNEL_TSID
 } vbi_xds_subclass_channel;
 
@@ -1308,13 +1309,13 @@ typedef enum {
 	VBI_XDS_IMPULSE_CAPTURE_ID,
 	VBI_XDS_SUPPLEMENTAL_DATA_LOCATION,
 	VBI_XDS_LOCAL_TIME_ZONE,
-	
+
 	VBI_XDS_OUT_OF_BAND_CHANNEL = 0x40,
-	
+
 	VBI_XDS_CHANNEL_MAP_POINTER,
-	
+
 	VBI_XDS_CHANNEL_MAP_HEADER,
-	
+
 	VBI_XDS_CHANNEL_MAP
 } vbi_xds_subclass_misc;
 
@@ -1342,7 +1343,7 @@ typedef struct {
 	vbi_xds_class		xds_class;
 	vbi_xds_subclass	xds_subclass;
 
-	
+
 	unsigned int		buffer_size;
 
 	uint8_t			buffer[36];
@@ -1413,7 +1414,7 @@ extern vbi_capture *	vbi_capture_v4l_new(const char *dev_name, int scanning,
 					    char **errorstr, vbi_bool trace);
 extern vbi_capture *	vbi_capture_v4l_sidecar_new(const char *dev_name, int given_fd,
 						    unsigned int *services,
-						    int strict, char **errorstr, 
+						    int strict, char **errorstr,
 						    vbi_bool trace);
 extern vbi_capture *	vbi_capture_bktr_new (const char *	dev_name,
 					      int		scanning,
@@ -1443,7 +1444,7 @@ vbi_capture_dvb_new2		(const char *		device_name,
 				 vbi_bool		trace);
 
 struct vbi_proxy_client;
- 
+
 extern vbi_capture *
 vbi_capture_proxy_new( struct vbi_proxy_client * vpc,
                         int buffers, int scanning,
@@ -1834,10 +1835,10 @@ extern vbi_bool		vbi_fetch_cc_page(vbi_decoder *vbi, vbi_page *pg,
 /* teletext_decoder.h */
 
 typedef enum {
-	VBI_WST_LEVEL_1,   
-	VBI_WST_LEVEL_1p5, 
+	VBI_WST_LEVEL_1,
+	VBI_WST_LEVEL_1p5,
 	VBI_WST_LEVEL_2p5,
-	VBI_WST_LEVEL_3p5  
+	VBI_WST_LEVEL_3p5
 } vbi_wst_level;
 
 

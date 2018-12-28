@@ -14,8 +14,8 @@
  *  Library General Public License for more details.
  *
  *  You should have received a copy of the GNU Library General Public
- *  License along with this library; if not, write to the 
- *  Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, 
+ *  License along with this library; if not, write to the
+ *  Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  *  Boston, MA  02110-1301  USA.
  */
 
@@ -74,8 +74,8 @@ typedef struct {
 
 	/**
 	 * Name of the network from XDS or from a table lookup of
-	 * CNIs in Teletext packet 8/30 or VPS. 
-	 */ 
+	 * CNIs in Teletext packet 8/30 or VPS.
+	 */
 	signed char		name[64];
 
 	/**
@@ -339,7 +339,7 @@ typedef struct {
  *
  * If program rating information is available (also known in the
  * U. S. as V-Chip data), this describes which rating scheme is
- * being used: U. S. film, U. S. TV, Canadian English or French TV. 
+ * being used: U. S. film, U. S. TV, Canadian English or French TV.
  * You can convert the rating code to a string with
  * vbi_rating_string().
  *
@@ -561,11 +561,11 @@ extern void		vbi_reset_prog_info(vbi_program_info *pi);
 /**
  * The vbi decoder received and cached another Teletext page
  * designated by ev.ttx_page.pgno and ev.ttx_page.subno.
- * 
+ *
  * ev.ttx_page.roll_header flags the page header as suitable for
  * rolling page numbers, e. g. excluding pages transmitted out
  * of order.
- * 
+ *
  * The ev.ttx_page.header_update flag is set when the header,
  * excluding the page number and real time clock, changed since the
  * last @c VBI_EVENT_TTX_PAGE. Note this may happen at midnight when the
@@ -574,7 +574,7 @@ extern void		vbi_reset_prog_info(vbi_program_info *pi);
  * at most once per second). They are both set at the first
  * @c VBI_EVENT_TTX_PAGE sent and unset while the received header
  * or clock field is corrupted.
- * 
+ *
  * If any of the roll_header, header_update or clock_update flags
  * are set ev.ttx_page.raw_header is a pointer to the raw header data
  * (40 bytes), which remains valid until the event handler returns.
@@ -589,7 +589,7 @@ extern void		vbi_reset_prog_info(vbi_program_info *pi);
  * A Closed Caption page has changed and needs visual update.
  * The page or "CC channel" is designated by ev.caption.pgno,
  * see vbi_pgno for details.
- * 
+ *
  * When the client is monitoring this page, the expected action is
  * to call vbi_fetch_cc_page(). To speed up rendering more detailed
  * update information is provided in vbi_page.dirty, see #vbi_page.
@@ -617,13 +617,13 @@ extern void		vbi_reset_prog_info(vbi_program_info *pi);
 #define	VBI_EVENT_NETWORK	0x0008
 /**
  * @anchor VBI_EVENT_TRIGGER
- * 
+ *
  * Triggers are sent by broadcasters to start some action on the
  * user interface of modern TVs. Until libzvbi implements all ;-) of
  * WebTV and SuperTeletext the information available are program
  * related (or unrelated) URLs, short messages and Teletext
  * page links.
- * 
+ *
  * This event is sent when a trigger has fired, ev.trigger
  * points to a vbi_link structure describing the link in detail.
  * The structure must be read only.
@@ -686,6 +686,7 @@ typedef struct vbi_event {
 	        }			ttx_page;
 		struct {
 			int			pgno;
+			int inform_pgno; //No need to update json. Just inform pg data.
 		}			caption;
 		vbi_network		network;
                 vbi_link *		trigger;

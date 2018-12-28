@@ -33,6 +33,7 @@ LOCAL_PRELINK_MODULE := false
 
 include $(BUILD_SHARED_LIBRARY)
 
+ifeq ($(shell test $(PLATFORM_SDK_VERSION) -ge 28&& echo OK),OK)
 include $(CLEAR_VARS)
 
 LOCAL_MODULE    := libzvbi
@@ -67,3 +68,4 @@ LOCAL_PRELINK_MODULE := false
 include $(BUILD_STATIC_LIBRARY)
 include $(LOCAL_PATH)/ntsc_decode/Android.mk
 #include $(LOCAL_PATH)/test/Android.mk
+endif

@@ -764,6 +764,7 @@ render(cc_channel *ch)
 	ch->pg[2] = ch->pg[ch->hidden ^ 1];
 
 	event.type = VBI_EVENT_CAPTION;
+	event.ev.caption.inform_pgno = 0;
 	event.ev.caption.pgno = ch->pg[0].pgno;
 
 	caption_send_event(ch->pg[0].vbi, &event);

@@ -447,6 +447,7 @@ struct dtvcc_decoder {
 	struct cc_timestamp		timestamp;
 
 	int                             flash_state;
+	int curr_data_pgno;
 };
 
 /* ATSC A/53 Part 4:2007 Closed Caption Data decoder. */

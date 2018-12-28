@@ -3937,7 +3937,8 @@ dtvcc_get_se_len (unsigned char *p, int left)
 void
 dtvcc_try_decode_packet		(struct dtvcc_decoder *	dc,
 				 const struct timeval *	tv,
-				 int64_t		pts)
+				 int64_t		pts,
+				 int* pgno)
 {
 	unsigned int packet_size_code;
 	unsigned int packet_size;
@@ -3988,6 +3989,8 @@ dtvcc_try_decode_packet		(struct dtvcc_decoder *	dc,
 
 			service_number = c;
 		}
+		if (service_number <= 6)
+			*pgno = service_number;
 
 		if (left >= header_size + block_size) {
 			if (service_number <= 6) {
@@ -4372,6 +4375,7 @@ update_display (struct tvcc_decoder *td)
 
 			event.type = VBI_EVENT_CAPTION;
 			event.ev.caption.pgno = i + 1 + 8/*after 8 cc channels*/;
+			event.ev.caption.inform_pgno = 0;
 
 			/* Permits calling tvcc_fetch_page from handler */
 			pthread_mutex_unlock(&td->mutex);
@@ -4381,6 +4385,21 @@ update_display (struct tvcc_decoder *td)
 			ds->update = 0;
 		}
 	}
+}
+
+static void
+notify_curr_data_pgno(struct tvcc_decoder *td, int pgno)
+{
+	struct vbi_event event;
+
+	event.type = VBI_EVENT_CAPTION;
+	event.ev.caption.pgno = pgno + 8/*after 8 cc channels*/;
+	event.ev.caption.inform_pgno = 1;
+
+	/* Permits calling tvcc_fetch_page from handler */
+	pthread_mutex_unlock(&td->mutex);
+	vbi_send_event(td->vbi, &event);
+	pthread_mutex_lock(&td->mutex);
 }
 
 
@@ -4396,6 +4415,7 @@ tvcc_decode_data			(struct tvcc_decoder *td,
 	unsigned int i, max_cc_count;
 	vbi_bool dtvcc;
 	struct timeval now;
+	int pgno = -1;
 
 	if (buf[0] != 0x03)
 		return;
@@ -4473,7 +4493,7 @@ tvcc_decode_data			(struct tvcc_decoder *td,
 				td->dtvcc.packet[j + 1] = cc_data_2;
 				td->dtvcc.packet_size = j + 2;
 
-				dtvcc_try_decode_packet (&td->dtvcc, &now, pts);
+				dtvcc_try_decode_packet (&td->dtvcc, &now, pts, &pgno);
 			}
 			break;
 
@@ -4492,11 +4512,13 @@ tvcc_decode_data			(struct tvcc_decoder *td,
 				td->dtvcc.packet[0] = cc_data_1;
 				td->dtvcc.packet[1] = cc_data_2;
 				td->dtvcc.packet_size = 2;
-				dtvcc_try_decode_packet(&td->dtvcc, &now, pts);
+				dtvcc_try_decode_packet(&td->dtvcc, &now, pts, &pgno);
 			}
 			break;
 		}
 	}
+	if (pgno != -1)
+	    notify_curr_data_pgno(td, pgno);
 
 	update_service_status_internal(td);
 	update_display(td);
