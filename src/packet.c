@@ -27,6 +27,7 @@
 #  include "config.h"
 #endif
 
+#include <stdio.h>
 #include <unistd.h>
 #include <limits.h>
 #include <fcntl.h>
@@ -48,8 +49,10 @@
 
 #define LOG_TAG    "ZVBI"
 #define LOGI(...)  __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
+#define LOGE(...)  __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
 #else
-#define LOGI(...) printf(...)
+#define LOGI(...) printf(__VA_ARGS__)
+#define LOGE(...) printf(__VA_ARGS__)
 #endif
 
 
@@ -149,7 +152,7 @@ dump_page_info(struct teletext *vt)
 		for (j = 0; j < 16; j++)
 			printf("%02x:%02x:%04x ",
 			       vt->page_info[i + j].code & 0xFF,
-			       vt->page_info[i + j].language & 0xFF, 
+			       vt->page_info[i + j].language & 0xFF,
 			       vt->page_info[i + j].subcode & 0xFFFF);
 
 		putchar('\n');
@@ -558,7 +561,7 @@ parse_mip_page(vbi_decoder *vbi, cache_page *vtp,
 					  /* subno_mask */ 0);
 		ps->charset_code =
 			page_language (&vbi->vt, vbi->cn, cp, pgno, code & 7);
-
+		LOGE("Mip charset_code 0x%x pgno %x national 0x%x", ps->charset_code, pgno, code & 7);
 		cache_page_unref (cp);
 
 		break;
@@ -986,11 +989,11 @@ parse_mpt_ex(cache_network *cn, uint8_t *raw, int packet)
  * @param vtp Raw teletext page to be converted.
  * @param cached The raw page is already cached, update the cache.
  * @param new_function The page function to convert to.
- * 
+ *
  * Since MOT, MIP and X/28 are optional, the function of a system page
  * may not be clear until we format a LOP and find a link of certain type,
  * so this function converts a page "after the fact".
- * 
+ *
  * @return
  * Pointer to the converted page, either @a vtp or the cached copy.
  **/
@@ -1173,7 +1176,7 @@ unknown_cni(vbi_decoder *vbi, const char *dl, int cni)
  * @internal
  * @param vbi Initialized vbi decoding context.
  * @param buf 13 bytes.
- * 
+ *
  * Decode a VPS datagram (13 bytes) according to
  * ETS 300 231 and update decoder state. This may
  * send a @a VBI_EVENT_NETWORK or @a VBI_EVENT_NETWORK_ID.
@@ -1409,7 +1412,7 @@ parse_bsd(vbi_decoder *vbi, uint8_t *raw, int packet, int designation)
 		 *  "transmission status message, e.g. the programme title",
 		 *  "default G0 set". XXX add to program_info event.
 		 */
-		if (1) { 
+		if (1) {
 			printf("... status: \"");
 
 			for (i = 20; i < 40; i++) {
@@ -1494,9 +1497,12 @@ same_clock(uint8_t *cur, uint8_t *ref)
 	cur += 32;
 	ref += 32;
 	for (i = 32; i < 40; cur++, ref++, i++)
-	       	if (*cur != *ref
-		    && (vbi_unpar8 (*cur) | vbi_unpar8 (*ref)) >= 0)
+	{
+	    if (*cur != *ref && (vbi_unpar8 (*cur) | vbi_unpar8 (*ref)) >= 0)
+	    {
 			return FALSE;
+	    }
+	}
 	return TRUE;
 }
 
@@ -1506,18 +1512,17 @@ store_lop(vbi_decoder *vbi, const cache_page *vtp)
 	struct ttx_page_stat *ps;
 	cache_page *new_cp;
 	vbi_event event;
+	vbi_event time_event;
+	int i;
 
 	event.type = VBI_EVENT_TTX_PAGE;
 
-	event.ev.ttx_page.pgno = vtp->pgno;
-	event.ev.ttx_page.subno = vtp->subno;
-
 	event.ev.ttx_page.roll_header =
-		(((vtp->flags & (  C5_NEWSFLASH
-				 | C6_SUBTITLE 
+		(((vtp->flags & (C5_NEWSFLASH
+				 | C6_SUBTITLE
 				 | C7_SUPPRESS_HEADER
 				 | C9_INTERRUPTED
-			         | C10_INHIBIT_DISPLAY)) == 0)
+			     | C10_INHIBIT_DISPLAY)) == 0)
 		 && (vtp->pgno <= 0x199
 		     || (vtp->flags & C11_MAGAZINE_SERIAL))
 		 && vbi_is_bcd(vtp->pgno) /* no hex numbers */);
@@ -1535,8 +1540,7 @@ store_lop(vbi_decoder *vbi, const cache_page *vtp)
 	 *  A little. Maybe this should be optional.
 	 */
 	if (event.ev.ttx_page.roll_header) {
-		int r;
-
+		int r, c, i;
 		if (vbi->vt.header_page.pgno == 0) {
 			/* First page after channel switch */
 			r = same_header(vtp->pgno, vtp->data.lop.raw[0] + 8,
@@ -1548,8 +1552,25 @@ store_lop(vbi_decoder *vbi, const cache_page *vtp)
 			r = same_header(vtp->pgno, vtp->data.lop.raw[0] + 8,
 					vbi->vt.header_page.pgno, vbi->vt.header + 8,
 					&event.ev.ttx_page.pn_offset);
-			event.ev.ttx_page.clock_update =
-				!same_clock(vtp->data.lop.raw[0], vbi->vt.header);
+			c = !same_clock(vtp->data.lop.raw[0], vbi->vt.header);
+			event.ev.ttx_page.clock_update = c;
+			if (c)
+			{
+				time_event.type = VBI_EVENT_TIME;
+				int clock_correct = TRUE;
+
+				for (i=0; i<8; i++)
+				{
+					time_event.time[i] = _vbi_to_ascii(vtp->data.lop.raw[0][i+32]);
+					if (i == 0 || i == 1 || i == 3 || i == 4 || i == 6 || i == 7)
+					{
+						if (time_event.time[i] < '0' || time_event.time[i] > '9')
+							clock_correct = FALSE;
+					}
+				}
+				if (clock_correct == TRUE)
+					vbi_send_event(vbi, &time_event);
+			}
 		}
 
 		switch (r) {
@@ -1582,6 +1603,11 @@ store_lop(vbi_decoder *vbi, const cache_page *vtp)
 				vbi_chsw_reset(vbi, 0);
 				return TRUE;
 			}
+			if (c == TRUE)
+			{
+				memcpy(vbi->vt.header + 32,
+			       vtp->data.lop.raw[0] + 32, 8);
+			}
 
 			/* fall through */
 
@@ -1613,15 +1639,7 @@ store_lop(vbi_decoder *vbi, const cache_page *vtp)
 			break;
 		}
 
-		if (0) {
-			int i;
-
-			for (i = 0; i < 40; i++)
-				putchar(_vbi_to_ascii (vtp->data.unknown.raw[0][i]));
-			putchar('\r');
-			fflush(stdout);
-		}
-	} else {
+		} else {
 		// fprintf(stderr, "-");
 	}
 
@@ -1649,6 +1667,8 @@ store_lop(vbi_decoder *vbi, const cache_page *vtp)
 
 	new_cp = _vbi_cache_put_page (vbi->ca, vbi->cn, vtp);
 	if (NULL != new_cp) {
+		event.ev.ttx_page.pgno = new_cp->pgno;
+		event.ev.ttx_page.subno = new_cp->subno;
 		vbi_send_event(vbi, &event);
 		cache_page_unref (new_cp);
 	}
@@ -1801,7 +1821,7 @@ parse_28_29(vbi_decoder *vbi, uint8_t *p,
 		 *  ZDF and BR3 transmit GPOP 1EE/.. with 1/28/0 function
 		 *  0 = PAGE_FUNCTION_LOP, should be PAGE_FUNCTION_GPOP.
 		 *  Makes no sense to me. Update: also encountered pages
-		 *  mFE and mFF with function = 0. Strange. 
+		 *  mFE and mFF with function = 0. Strange.
 		 */
 		if (function != PAGE_FUNCTION_LOP && packet == 28) {
 			if (cvtp->function != PAGE_FUNCTION_UNKNOWN
@@ -2015,12 +2035,12 @@ parse_8_30(vbi_decoder *vbi, uint8_t *p, int packet)
  * @internal
  * @param vbi Initialized vbi decoding context.
  * @param p Packet data.
- * 
+ *
  * Parse a teletext packet (42 bytes) and update the decoder
  * state accordingly. This function may send events.
- * 
+ *
  * Return value:
- * FALSE if the packet contained incorrectable errors. 
+ * FALSE if the packet contained incorrectable errors.
  */
 vbi_bool
 vbi_decode_teletext(vbi_decoder *vbi, uint8_t *p)
@@ -2047,13 +2067,18 @@ vbi_decode_teletext(vbi_decoder *vbi, uint8_t *p)
 
 	p += 2;
 
-	if (0) {
+	if (0) { //Dump data
 		unsigned int i;
-
-		fprintf(stderr, "packet 0x%x %d >", mag8 * 0x100, packet);
+		char display_buffer[2048];
+		char display_raw_buffer[2048];
 		for (i = 0; i < 40; i++)
-			fputc(_vbi_to_ascii (p[i]), stderr);
-		fprintf(stderr, "<\n");
+		{
+			snprintf(display_buffer+3*i, 1024-3*i, "%c  ", _vbi_to_ascii (p[i]));
+			snprintf(display_raw_buffer+3*i, 1024 - 3*i, "%02x ",  p[i]);
+		}
+
+		LOGI("pgno %x.%d dump packet %d    buffer: %s", cvtp->pgno, cvtp->subno, packet, display_buffer);
+		LOGI("pgno %x.%d dump packet %d raw buffer: %s", cvtp->pgno, cvtp->subno, packet, display_raw_buffer);
 	}
 
 	switch (packet) {
@@ -2063,21 +2088,20 @@ vbi_decode_teletext(vbi_decoder *vbi, uint8_t *p)
 		struct raw_page *curr;
 		cache_page *vtp;
 		int i;
-
-		if ((page = vbi_unham16p (p)) < 0) {
+		page = vbi_unham16p (p);
+		if (page < 0 || page >= 0x100) {
 			vbi_teletext_desync(vbi);
-//			printf("Hamming error in packet 0 page number\n");
+			LOGI("Hamming error in packet 0 page number\n");
 			return FALSE;
 		}
 
-		pgno = mag8 * 256 + page;
+		pgno = mag8 * 0x100 + page;
 
 		/*
 		 *  Store page terminated by new header.
 		 */
 		while ((curr = vbi->vt.current)) {
 			vtp = curr->page;
-
 			if (vtp->flags & C11_MAGAZINE_SERIAL) {
 				if (vtp->pgno == pgno)
 					break;
@@ -2088,7 +2112,6 @@ vbi_decode_teletext(vbi_decoder *vbi, uint8_t *p)
 				if ((vtp->pgno & 0xFF) == page)
 					break;
 			}
-
 			switch (vtp->function) {
 			case PAGE_FUNCTION_DISCARD:
 			case PAGE_FUNCTION_EPG:
@@ -2096,7 +2119,10 @@ vbi_decode_teletext(vbi_decoder *vbi, uint8_t *p)
 
 			case PAGE_FUNCTION_LOP:
 				if (!store_lop(vbi, vtp))
+				{
+					//LOGI("packet 0 out %d", __LINE__);
 					return FALSE;
+				}
 				break;
 
 			case PAGE_FUNCTION_DRCS:
@@ -2121,9 +2147,9 @@ vbi_decode_teletext(vbi_decoder *vbi, uint8_t *p)
 			{
 				cache_page *new_cp;
 
-				new_cp = _vbi_cache_put_page
-					(vbi->ca, vbi->cn, vtp);
-				cache_page_unref (new_cp);
+				new_cp = _vbi_cache_put_page(vbi->ca, vbi->cn, vtp);
+				if (new_cp)
+					cache_page_unref (new_cp);
 				break;
 			}
 
@@ -2255,7 +2281,7 @@ vbi_decode_teletext(vbi_decoder *vbi, uint8_t *p)
 			cvtp->lop_packets = 1;
 			cvtp->x26_designations = 0;
 			cvtp->x27_designations = 0;
-			cvtp->x28_designations = 0;		
+			cvtp->x28_designations = 0;
 		}
 
 		if (cvtp->function == PAGE_FUNCTION_UNKNOWN) {
@@ -2599,8 +2625,8 @@ vbi_teletext_set_default_region(vbi_decoder *vbi, int default_region)
 
 /**
  * @param vbi Initialized vbi decoding context.
- * @param level 
- * 
+ * @param level
+ *
  * @deprecated
  * This became a parameter of vbi_fetch_vt_page().
  */
@@ -2618,7 +2644,7 @@ vbi_teletext_set_level(vbi_decoder *vbi, int level)
 /**
  * @internal
  * @param vbi Initialized vbi decoding context.
- * 
+ *
  * This function must be called after desynchronisation
  * has been detected (i. e. vbi data has been lost)
  * to reset the Teletext decoder.
@@ -2627,7 +2653,6 @@ void
 vbi_teletext_desync(vbi_decoder *vbi)
 {
 	int i;
-
 	/* Discard all in progress pages */
 
 	for (i = 0; i < 8; i++)
@@ -2688,7 +2713,7 @@ ttx_page_stat_init		(struct ttx_page_stat *	ps)
 
 /**
  * @param vbi Initialized vbi decoding context.
- * 
+ *
  * This function must be called after a channel switch,
  * to reset the Teletext decoder.
  */
@@ -2719,7 +2744,7 @@ vbi_teletext_channel_switched(vbi_decoder *vbi)
 /**
  * @internal
  * @param vbi VBI decoding context.
- * 
+ *
  * This function is called during @a vbi destruction
  * to destroy the Teletext subset of @a vbi object.
  */
@@ -2732,7 +2757,7 @@ vbi_teletext_destroy(vbi_decoder *vbi)
 /**
  * @internal
  * @param vbi VBI decoding context.
- * 
+ *
  * This function is called during @a vbi initialization
  * to initialize the Teletext subset of @a vbi object.
  */

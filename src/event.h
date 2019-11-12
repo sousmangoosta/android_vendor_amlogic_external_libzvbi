@@ -656,6 +656,8 @@ extern void		vbi_reset_prog_info(vbi_program_info *pi);
  */
 #define	VBI_EVENT_NETWORK_ID	0x0100
 #define VBI_EVENT_RATING		0x0200
+#define VBI_EVENT_TIME		0x0400
+
 /** @} */
 
 /**
@@ -674,6 +676,7 @@ extern void		vbi_reset_prog_info(vbi_program_info *pi);
  */
 typedef struct vbi_event {
 	int			type;
+	char        time[8];
 	union {
 		struct {
 		        int			pgno;

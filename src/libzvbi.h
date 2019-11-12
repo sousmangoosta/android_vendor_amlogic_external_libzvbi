@@ -518,8 +518,7 @@ extern void		vbi_reset_prog_info(vbi_program_info *pi);
 #define	VBI_EVENT_PROG_INFO	0x0080
 #define	VBI_EVENT_NETWORK_ID	0x0100
 #define VBI_EVENT_RATING	0x0200
-
-
+#define VBI_EVENT_TIME	0x0400
 
 #include <inttypes.h>
 
@@ -528,6 +527,7 @@ extern void		vbi_reset_prog_info(vbi_program_info *pi);
  */
 typedef struct vbi_event {
 	int			type;
+	char        time[8];
 	union {
 		struct {
 		        int			pgno;
@@ -613,7 +613,7 @@ typedef struct vbi_char {
 	unsigned	conceal		: 1;
 	unsigned	proportional	: 1;
 	unsigned	link		: 1;
-	unsigned	reserved	: 1;
+	unsigned	flash_count	: 1;
 	unsigned	size		: 8;
 	unsigned	opacity		: 8;
 	unsigned	foreground	: 8;
@@ -634,7 +634,7 @@ typedef struct vbi_page {
 	int			subno;
 	int			rows;
 	int			columns;
-	vbi_char		text[1056];
+	vbi_char		text[1200];
 
 	struct {
 	     /* int			x0, x1; */
@@ -1688,13 +1688,16 @@ extern void		vbi_draw_vt_page_region(vbi_page *pg, vbi_pixfmt fmt,
 						void *canvas, int rowstride,
 						int column, int row,
 						int width, int height,
-						int reveal, int flash_on, int subtitle);
+						int reveal, int flash_on,
+						int subtitle, int mode,
+						int transparent, int pause, char* time, int subno);
 _vbi_inline void
 vbi_draw_vt_page(vbi_page *pg, vbi_pixfmt fmt, void *canvas,
 		 int reveal, int flash_on, int subtitle)
 {
 	vbi_draw_vt_page_region(pg, fmt, canvas, -1, 0, 0,
-				pg->columns, pg->rows, reveal, flash_on, subtitle);
+				pg->columns, pg->rows, reveal,
+				flash_on, subtitle, 0, 0, 0, NULL, 0);
 }
 
 extern void		vbi_draw_cc_page_region(vbi_page *pg, vbi_pixfmt fmt,
@@ -1848,7 +1851,7 @@ extern void		vbi_teletext_set_level(vbi_decoder *vbi, int level);
 extern vbi_bool		vbi_fetch_vt_page(vbi_decoder *vbi, vbi_page *pg,
 					  vbi_pgno pgno, vbi_subno subno,
 					  vbi_wst_level max_level, int display_rows,
-					  vbi_bool navigation);
+					  vbi_bool navigation, int* page_type);
 extern int		vbi_page_title(vbi_decoder *vbi, int pgno, int subno, char *buf);
 
 extern void		vbi_resolve_link(vbi_page *pg, int column, int row,
