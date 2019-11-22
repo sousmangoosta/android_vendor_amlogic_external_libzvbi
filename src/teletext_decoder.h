@@ -16,8 +16,8 @@
  *  Library General Public License for more details.
  *
  *  You should have received a copy of the GNU Library General Public
- *  License along with this library; if not, write to the 
- *  Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, 
+ *  License along with this library; if not, write to the
+ *  Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  *  Boston, MA  02110-1301  USA.
  */
 
@@ -84,7 +84,7 @@ extern void		vbi_teletext_set_level(vbi_decoder *vbi, int level);
 extern vbi_bool		vbi_fetch_vt_page(vbi_decoder *vbi, vbi_page *pg,
 					  vbi_pgno pgno, vbi_subno subno,
 					  vbi_wst_level max_level, int display_rows,
-					  vbi_bool navigation);
+					  vbi_bool navigation, int* page_type);
 extern int		vbi_page_title(vbi_decoder *vbi, int pgno, int subno, char *buf);
 /** @} */
 /**

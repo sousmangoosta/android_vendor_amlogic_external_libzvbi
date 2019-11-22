@@ -14,8 +14,8 @@
  *  Library General Public License for more details.
  *
  *  You should have received a copy of the GNU Library General Public
- *  License along with this library; if not, write to the 
- *  Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, 
+ *  License along with this library; if not, write to the
+ *  Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  *  Boston, MA  02110-1301  USA.
  */
 
@@ -37,7 +37,9 @@ extern void		vbi_draw_vt_page_region(vbi_page *pg, vbi_pixfmt fmt,
 						void *canvas, int rowstride,
 						int column, int row,
 						int width, int height,
-						int reveal, int flash_on, int subtitle);
+						int reveal, int flash_on,
+						int subtitle, int mode,
+						int transparent, int pause, char* time, int subno);
 /**
  * @param pg Source page.
  * @param fmt Target format. For now only VBI_PIXFMT_RGBA32_LE (vbi_rgba) permitted.
@@ -49,7 +51,7 @@ extern void		vbi_draw_vt_page_region(vbi_page *pg, vbi_pixfmt fmt,
  * @param flash_on If FALSE, draw characters flagged 'blink' (see vbi_char) as
  *   space (U+0020).
  * @param subtitle If TRUE, draw subtitle mode teletext.
- * 
+ *
  * Draw a Teletext vbi_page. In this mode one character occupies 12 x 10 pixels.
  */
 _vbi_inline void
@@ -57,7 +59,7 @@ vbi_draw_vt_page(vbi_page *pg, vbi_pixfmt fmt, void *canvas,
 		 int reveal, int flash_on, int subtitle)
 {
 	vbi_draw_vt_page_region(pg, fmt, canvas, -1, 0, 0,
-				pg->columns, pg->rows, reveal, flash_on, subtitle);
+				pg->columns, pg->rows, reveal, flash_on, subtitle, 0, 0, 0, NULL, 0);
 }
 
 extern void		vbi_draw_cc_page_region(vbi_page *pg, vbi_pixfmt fmt,

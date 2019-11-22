@@ -14,8 +14,8 @@
  *  Library General Public License for more details.
  *
  *  You should have received a copy of the GNU Library General Public
- *  License along with this library; if not, write to the 
- *  Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, 
+ *  License along with this library; if not, write to the
+ *  Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  *  Boston, MA  02110-1301  USA.
  */
 
@@ -28,6 +28,16 @@
 #include <errno.h>
 
 #include "version.h"
+#ifdef ANDROID
+#include <android/log.h>
+
+#define LOG_TAG    "ZVBI"
+#define LOGI(...)  __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
+#else
+#define LOGI(...) printf(__VA_ARGS__)
+#endif
+
+
 #if 2 == VBI_VERSION_MINOR
 #  include "event.h"
 #  include "cache-priv.h"
@@ -121,7 +131,7 @@ cache_network_dump		(const cache_network *	cn,
 		 cn->zombie);
 }
 
-/* Removes Teletext page from network statistics. */ 
+/* Removes Teletext page from network statistics. */
 static void
 cache_network_remove_page	(cache_network *	cn,
 				 cache_page *		cp)
@@ -859,7 +869,7 @@ cache_page_dump			(const cache_page *	cp,
 /**
  * @internal
  * @param cp Teletext page.
- * 
+ *
  * @returns
  * Storage size required for the raw Teletext page,
  * depending on its function and the data union member used.
@@ -978,7 +988,7 @@ delete_page			(vbi_cache *		ca,
 	}
 
 	if (CACHE_PRI_ZOMBIE != cp->priority) {
-		/* Referenced and zombie pages don't count. */ 
+		/* Referenced and zombie pages don't count. */
 		ca->memory_used -= cache_page_size (cp);
 
 		unlink_node (&cp->hash_node);
@@ -1045,7 +1055,7 @@ delete_surplus_pages		(vbi_cache *		ca)
  * values range from 16 KB to 1 GB, default is 1 GB as in libzvbi 0.2.
  * The number of pages transmitted by networks varies. Expect on the order
  * of one or two megabytes for a complete set.
- * 
+ *
  * When the cache is too small to contain all pages of a network,
  * newly received pages will replace older pages. Pages of the
  * current network, or which have been recently requested, or will
@@ -1280,11 +1290,11 @@ vbi_unref_page			(vbi_page *		pg)
  *
  * Gets a page from the cache. When @a subno is @c VBI_ANY_SUBNO, the most
  * recently received subpage of that page is returned.
- * 
+ *
  * The reference counter of the page is incremented, you must call
  * cache_page_unref() to unreference the page.
- * 
- * @return 
+ *
+ * @return
  * cache_page pointer, NULL when the requested page is not cached.
  */
 cache_page *
@@ -1328,7 +1338,6 @@ _vbi_cache_get_page		(vbi_cache *		ca,
 		return NULL;
 	} else {
 		if (CACHE_DEBUG) {
-			fputs ("Found ", stderr);
 			cache_page_dump (cp, stderr);
 			fputc ('\n', stderr);
 		}
@@ -1382,8 +1391,8 @@ _vbi_cache_find_next_page_2       (vbi_cache * ca,
 				 vbi_subno subno)
 {
 	struct node *hash_list;
-	cache_page *cp, *cp1, *ret = NULL;
-	int i;
+	cache_page *cp, *cp1, *ret = NULL, *cp_max = NULL, *cp_min = NULL;
+	int i, max_pgno = 0, min_pgno = 0x8FF;
 
 	assert (NULL != ca);
 
@@ -1403,14 +1412,28 @@ _vbi_cache_find_next_page_2       (vbi_cache * ca,
 				if((cp->pgno < pgno) && (!ret || (ret->pgno < cp->pgno)))
 					ret = cp;
 			}
+
+			if (max_pgno < cp->pgno)
+			{
+				max_pgno = cp->pgno;
+				cp_max = cp;
+			}
+
+			if (min_pgno > cp->pgno)
+			{
+				min_pgno = cp->pgno;
+				cp_min = cp;
+			}
 		}
 	}
-
-	if(ret){
+	if (ret)
 		return cache_page_ref(ret);
-	}
-
-	return NULL;
+	else if (!ret && dir > 0 && cp_min)
+		return cache_page_ref(cp_min);
+	else if (!ret && dir < 0 && cp_max)
+		return cache_page_ref(cp_max);
+	else
+		return NULL;
 }
 
 vbi_bool
@@ -1571,7 +1594,7 @@ _vbi_cache_foreach_page		(vbi_cache *		ca,
  * @param cp Teletext page to store in the cache.
  *
  * Puts a copy of @a cp in the cache.
- * 
+ *
  * @returns
  * cache_page pointer (in the cache, not @a cp), @c NULL on failure
  * (out of memory). You must unref the returned page if no longer needed.
@@ -1616,9 +1639,8 @@ _vbi_cache_put_page		(vbi_cache *		ca,
 	/* EN 300 706 Section A.1, E.2. */
 
 	if (0xFF == (cp->pgno & 0xFF)) {
-		warning (&ca->log,
-			 "Invalid pgno 0x%x.", cp->pgno);
-		return NULL;
+		LOGI ("Invalid pgno 0x%x.!!!", cp->pgno);
+		//return NULL;
 	}
 
 	subno = cp->subno;
@@ -1637,6 +1659,7 @@ _vbi_cache_put_page		(vbi_cache *		ca,
 
 			if (VBI_CLOCK_PAGE == page_type
 			    || subno >= 0x0100) {
+			    //LOGI("Clock page");
 				/* A clock page or a rolling page without
 				   subpages (Section A.1 Note 1).
 				   One version. */
@@ -1859,7 +1882,7 @@ _vbi_cache_dump			(const vbi_cache *	ca,
  * @param ca Cache allocated with vbi_cache_new().
  * @param callback Function to be called on events.
  * @param user_data User pointer passed through to the @a callback function.
- * 
+ *
  * Removes an event handler from the cache, if a handler with
  * this @a callback and @a user_data has been registered. You can
  * safely call this function from a handler removing itself or another
@@ -1882,7 +1905,7 @@ vbi_cache_remove_event_handler	(vbi_cache *		ca,
  *   for, can be -1 for all and 0 for none.
  * @param callback Function to be called on events.
  * @param user_data User pointer passed through to the @a callback function.
- * 
+ *
  * Adds a new event handler to the cache. When the @a callback
  * with @a user_data is already registered the function merely changes the
  * set of events it will receive in the future. When the @a event_mask is

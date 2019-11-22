@@ -195,6 +195,7 @@ do_export			(vbi_pgno		pgno,
 {
 	vbi_page page;
 	vbi_bool success;
+	int page_type;
 
 	if (option_delay > 1) {
 		--option_delay;
@@ -205,7 +206,7 @@ do_export			(vbi_pgno		pgno,
 				     pgno, subno,
 				     VBI_WST_LEVEL_3p5,
 				     /* n_rows */ 25,
-				     /* navigation */ TRUE);
+				     /* navigation */ TRUE, &page_type);
 	if (!success) {
 		/* Shouldn't happen. */
 		error_exit (_("Unknown error."));
@@ -476,7 +477,7 @@ do_export			(vbi_pgno		pgno,
 			pg = vbi_decoder_get_page
 				(vbi, NULL /* current network */,
 				 pgno, subno,
-				 VBI_HEADER_ONLY, option_header_only, 
+				 VBI_HEADER_ONLY, option_header_only,
 				 VBI_PADDING, option_padding,
 				 VBI_PANELS, option_panels,
 				 VBI_NAVIGATION, option_navigation,
@@ -489,7 +490,7 @@ do_export			(vbi_pgno		pgno,
 			pg = vbi_decoder_get_page
 				(vbi, NULL /* current network */,
 				 pgno, subno,
-				 VBI_HEADER_ONLY, option_header_only, 
+				 VBI_HEADER_ONLY, option_header_only,
 				 VBI_PADDING, option_padding,
 				 VBI_PANELS, option_panels,
 				 VBI_NAVIGATION, option_navigation,

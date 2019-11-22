@@ -15,6 +15,9 @@ LOCAL_C_INCLUDES := -I $(LOCAL_PATH)
 LOCAL_C_INCLUDES += -I $(LOCAL_PATH)/../aml_dvb-1.0/include/am_adp
 
 CFLAGS += $(LOCAL_C_INCLUDES) $(DEFINES)
+ifeq ($(ARCH_IS_64), y)
+CFLAGS+=-DHAVE_S64_U64
+endif
 LDFLAGS  := -shared -fPIC -L$(INSTALL_DIR)
 
 all : $(OBJS) $(OUTPUT)

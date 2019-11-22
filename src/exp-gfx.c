@@ -14,8 +14,8 @@
  *  Library General Public License for more details.
  *
  *  You should have received a copy of the GNU Library General Public
- *  License along with this library; if not, write to the 
- *  Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, 
+ *  License along with this library; if not, write to the
+ *  Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  *  Boston, MA  02110-1301  USA.
  */
 
@@ -40,6 +40,7 @@
 
 #include "wstfont2.xbm"
 #include "ccfont2.xbm"
+#include "psymbol.xbm"
 
 #ifdef ANDROID
 #include <android/log.h>
@@ -48,8 +49,8 @@
 #define LOGE(...)  __android_log_print(ANDROID_LOG_ERROR,LOG_TAG,__VA_ARGS__)
 
 #else
-#define LOGI(...) printf(...)
-#define LOGE(...) printf(...)
+#define LOGI(...) printf(__VA_ARGS__)
+#define LOGE(...) printf(__VA_ARGS__)
 #endif
 
 /* Teletext character cell dimensions - hardcoded (DRCS) */
@@ -58,6 +59,8 @@
 #define TCH 10
 
 #define TCPL (wstfont2_width / TCW * wstfont2_height / TCH)
+#define PSCPL (psymbol_width / TCW * psymbol_height / TCH)
+
 
 /* Closed Caption character cell dimensions */
 
@@ -82,7 +85,7 @@ init_gfx(void)
 	for (p = t, i = 0; i < TCH; i++)
 		for (j = 0; j < wstfont2_height; p += wstfont2_width / 8, j += TCH)
 			memcpy(p, wstfont2_bits + (j + i) * wstfont2_width / 8,
-			       wstfont2_width / 8);
+				wstfont2_width / 8);
 
 	memcpy(wstfont2_bits, t, wstfont2_width * wstfont2_height / 8);
 	free (t);
@@ -93,7 +96,7 @@ init_gfx(void)
 	for (p = t, i = 0; i < CCH; i++)
 		for (j = 0; j < ccfont2_height; p += ccfont2_width / 8, j += CCH)
 			memcpy(p, ccfont2_bits + (j + i) * ccfont2_width / 8,
-			       ccfont2_width / 8);
+				ccfont2_width / 8);
 
 	memcpy(ccfont2_bits, t, ccfont2_width * ccfont2_height / 8);
 	free(t);
@@ -105,9 +108,9 @@ init_gfx(void)
  * @param italic @c TRUE to switch to slanted character set (doesn't affect
  *          Hebrew and Arabic). If this is a G1 block graphic character
  *          switch to separated block mosaic set.
- * 
- * Translate Unicode character to glyph number in wstfont2 image. 
- * 
+ *
+ * Translate Unicode character to glyph number in wstfont2 image.
+ *
  * @return
  * Glyph number.
  */
@@ -186,9 +189,9 @@ special:
  * @internal
  * @param c Unicode.
  * @param italic @c TRUE to switch to slanted character set.
- * 
- * Translate Unicode character to glyph number in ccfont2 image. 
- * 
+ *
+ * Translate Unicode character to glyph number in ccfont2 image.
+ *
  * @return
  * Glyph number.
  */
@@ -196,7 +199,7 @@ static unsigned int
 unicode_ccfont2(unsigned int c, int italic)
 {
 	static const unsigned short specials[] = {
-								0x00E1, 0x00E9,
+		0x00E1, 0x00E9,
 		0x00ED, 0x00F3, 0x00FA, 0x00E7, 0x00F7, 0x00D1, 0x00F1, 0x25A0,
 		0x00AE, 0x00B0, 0x00BD, 0x00BF, 0x2122, 0x00A2, 0x00A3, 0x266A,
 		0x00E0, 0x0020, 0x00E8, 0x00E2, 0x00EA, 0x00EE, 0x00F4, 0x00FB };
@@ -232,22 +235,22 @@ slant:
  * Pixel @a i in plane @a p.
  */
 #define peek(p, i)							\
-((canvas_type == sizeof(uint8_t)) ? ((uint8_t *)(p))[i] :		\
-    ((canvas_type == sizeof(uint16_t)) ? ((uint16_t *)(p))[i] :		\
-	((uint32_t *)(p))[i]))
+	((canvas_type == sizeof(uint8_t)) ? ((uint8_t *)(p))[i] :		\
+	 ((canvas_type == sizeof(uint16_t)) ? ((uint16_t *)(p))[i] :		\
+	  ((uint32_t *)(p))[i]))
 
 /**
  * @internal
  * @param p Plane of @a canvas_type char, short, int.
  * @param i Index.
  * @param v Value.
- * 
+ *
  * Set pixel @a i in plane @a p to value @a v.
  */
 #define poke(p, i, v)							\
-((canvas_type == sizeof(uint8_t)) ? (((uint8_t *)(p))[i] = (v)) :	\
-    ((canvas_type == sizeof(uint16_t)) ? (((uint16_t *)(p))[i] = (v)) :	\
-	(((uint32_t *)(p))[i] = (v))))
+	((canvas_type == sizeof(uint8_t)) ? (((uint8_t *)(p))[i] = (v)) :	\
+	 ((canvas_type == sizeof(uint16_t)) ? (((uint16_t *)(p))[i] = (v)) :	\
+	  (((uint32_t *)(p))[i] = (v))))
 
 /**
  * @internal
@@ -270,14 +273,14 @@ slant:
  *   and right half), DOUBLE_HEIGHT (draws upper half only),
  *   DOUBLE_SIZE (left and right upper half), DOUBLE_HEIGHT2
  *   (lower half), DOUBLE_SIZE2 (left and right lower half).
- * 
+ *
  * Draw one character (function template - define a static version with
  * constant @a canvas_type, @a font, @a cpl, @a cw, @a ch).
  */
 static inline void
 draw_char(int canvas_type, uint8_t *canvas, int rowstride,
-	  uint8_t *pen, uint8_t *font, int cpl, int cw, int ch,
-	  int glyph, int bold, unsigned int underline, vbi_size size)
+		uint8_t *pen, uint8_t *font, int cpl, int cw, int ch,
+		int glyph, int bold, unsigned int underline, vbi_size size)
 {
 	uint8_t *src;
 	int shift, x, y;
@@ -291,17 +294,17 @@ draw_char(int canvas_type, uint8_t *canvas, int rowstride,
 	src = font + (x >> 3);
 
 	switch (size) {
-	case VBI_DOUBLE_HEIGHT2:
-	case VBI_DOUBLE_SIZE2:
-		src += cpl * cw / 8 * ch / 2;
-		underline >>= ch / 2;
+		case VBI_DOUBLE_HEIGHT2:
+		case VBI_DOUBLE_SIZE2:
+			src += cpl * cw / 8 * ch / 2;
+			underline >>= ch / 2;
 
-	case VBI_DOUBLE_HEIGHT:
-	case VBI_DOUBLE_SIZE: 
-		ch >>= 1;
+		case VBI_DOUBLE_HEIGHT:
+		case VBI_DOUBLE_SIZE:
+			ch >>= 1;
 
-	default:
-		break;
+		default:
+			break;
 	}
 
 	for (y = 0; y < ch; underline >>= 1, y++) {
@@ -312,7 +315,7 @@ draw_char(int canvas_type, uint8_t *canvas, int rowstride,
 #if defined (i386)
 			bits = (*((uint16_t *) src) >> shift);
 #else
-                        /* unaligned/little endian */
+			/* unaligned/little endian */
 			bits = ((src[1] * 256 + src[0]) >> shift);
 #endif
 #else
@@ -322,58 +325,57 @@ draw_char(int canvas_type, uint8_t *canvas, int rowstride,
 		}
 
 		switch (size) {
-		case VBI_NORMAL_SIZE:
-			for (x = 0; x < cw; bits >>= 1, x++)
-				poke(canvas, x, peek(pen, bits & 1));
+			case VBI_NORMAL_SIZE:
+				for (x = 0; x < cw; bits >>= 1, x++)
+					poke(canvas, x, peek(pen, bits & 1));
 
-			canvas += rowstride;
+				canvas += rowstride;
 
-			break;
+				break;
 
-		case VBI_DOUBLE_HEIGHT:
-		case VBI_DOUBLE_HEIGHT2:
-			for (x = 0; x < cw; bits >>= 1, x++) {
-				unsigned int col = peek(pen, bits & 1);
+			case VBI_DOUBLE_HEIGHT:
+			case VBI_DOUBLE_HEIGHT2:
+				for (x = 0; x < cw; bits >>= 1, x++) {
+					unsigned int col = peek(pen, bits & 1);
 
-				poke(canvas, x, col);
-				poke(canvas, x + rowstride / canvas_type, col);
-			}
+					poke(canvas, x, col);
+					poke(canvas, x + rowstride / canvas_type, col);
+				}
 
-			canvas += rowstride * 2;
+				canvas += rowstride * 2;
 
-			break;
+				break;
 
-		case VBI_DOUBLE_WIDTH:
-			for (x = 0; x < cw * 2; bits >>= 1, x += 2) {
-				unsigned int col = peek(pen, bits & 1);
+			case VBI_DOUBLE_WIDTH:
+				for (x = 0; x < cw * 2; bits >>= 1, x += 2) {
+					unsigned int col = peek(pen, bits & 1);
 
-				poke(canvas, x + 0, col);
-				poke(canvas, x + 1, col);
-			}
+					poke(canvas, x + 0, col);
+					poke(canvas, x + 1, col);
+				}
 
-			canvas += rowstride;
+				canvas += rowstride;
 
-			break;
+				break;
 
-		case VBI_DOUBLE_SIZE:
-		case VBI_DOUBLE_SIZE2:
-			for (x = 0; x < cw * 2; bits >>= 1, x += 2) {
-				unsigned int col = peek(pen, bits & 1);
+			case VBI_DOUBLE_SIZE:
+			case VBI_DOUBLE_SIZE2:
+				for (x = 0; x < cw * 2; bits >>= 1, x += 2) {
+					unsigned int col = peek(pen, bits & 1);
 
-				poke(canvas, x + 0, col);
-				poke(canvas, x + 1, col);
-				poke(canvas, x + rowstride / canvas_type + 0, col);
-				poke(canvas, x + rowstride / canvas_type + 1, col);
-			}
+					poke(canvas, x + 0, col);
+					poke(canvas, x + 1, col);
+					poke(canvas, x + rowstride / canvas_type + 0, col);
+					poke(canvas, x + rowstride / canvas_type + 1, col);
+				}
 
-			canvas += rowstride * 2;
+				canvas += rowstride * 2;
 
-			break;
+				break;
 
-		default:
-			break;
+			default:
+				break;
 		}
-
 		src += cpl * cw / 8;
 	}
 }
@@ -395,81 +397,86 @@ draw_char(int canvas_type, uint8_t *canvas, int rowstride,
  *   and right half), DOUBLE_HEIGHT (draws upper half only),
  *   DOUBLE_SIZE (left and right upper half), DOUBLE_HEIGHT2
  *   (lower half), DOUBLE_SIZE2 (left and right lower half).
- * 
+ *
  * Draw one Teletext Dynamically Redefinable Character (function template -
  * define a static version with constant @a canvas_type, @a font).
  */
 static inline void
 draw_drcs(int canvas_type, uint8_t *canvas, unsigned int rowstride,
-	  uint8_t *pen, int color, uint8_t *font, int glyph, vbi_size size)
+		uint8_t *pen, int color, uint8_t *font, int glyph, vbi_size size)
 {
 	uint8_t *src;
 	unsigned int col;
 	int x, y;
-
 	src = font + glyph * 60;
 	pen = pen + color * canvas_type;
 
+	if (!canvas || !pen || !src)
+	{
+		LOGI("failed: draw_drcs encounters null");
+		return;
+	}
+
 	switch (size) {
-	case VBI_NORMAL_SIZE:
-		for (y = 0; y < TCH; canvas += rowstride, y++)
-			for (x = 0; x < 12; src++, x += 2) {
-				poke(canvas, x + 0, peek(pen, *src & 15));
-				poke(canvas, x + 1, peek(pen, *src >> 4));
-			}
-		break;
+		case VBI_NORMAL_SIZE:
+			for (y = 0; y < TCH; canvas += rowstride, y++)
+				for (x = 0; x < 12; src++, x += 2) {
+					poke(canvas, x + 0, peek(pen, *src & 15));
+					poke(canvas, x + 1, peek(pen, *src >> 4));
+				}
+			break;
 
-	case VBI_DOUBLE_HEIGHT2:
-		src += 30;
+		case VBI_DOUBLE_HEIGHT2:
+			src += 30;
 
-	case VBI_DOUBLE_HEIGHT:
-		for (y = 0; y < TCH / 2; canvas += rowstride * 2, y++)
-			for (x = 0; x < 12; src++, x += 2) {
-				col = peek(pen, *src & 15);
-				poke(canvas, x + 0, col);
-				poke(canvas, x + rowstride / canvas_type + 0, col);
+		case VBI_DOUBLE_HEIGHT:
+			for (y = 0; y < TCH / 2; canvas += rowstride * 2, y++)
+				for (x = 0; x < 12; src++, x += 2) {
+					col = peek(pen, *src & 15);
+					poke(canvas, x + 0, col);
+					poke(canvas, x + rowstride / canvas_type + 0, col);
 
-				col = peek(pen, *src >> 4);
-				poke(canvas, x + 1, col);
-				poke(canvas, x + rowstride / canvas_type + 1, col);
-			}
-		break;
+					col = peek(pen, *src >> 4);
+					poke(canvas, x + 1, col);
+					poke(canvas, x + rowstride / canvas_type + 1, col);
+				}
+			break;
 
-	case VBI_DOUBLE_WIDTH:
-		for (y = 0; y < TCH; canvas += rowstride, y++)
-			for (x = 0; x < 12 * 2; src++, x += 4) {
-				col = peek(pen, *src & 15);
-				poke(canvas, x + 0, col);
-				poke(canvas, x + 1, col);
+		case VBI_DOUBLE_WIDTH:
+			for (y = 0; y < TCH; canvas += rowstride, y++)
+				for (x = 0; x < 12 * 2; src++, x += 4) {
+					col = peek(pen, *src & 15);
+					poke(canvas, x + 0, col);
+					poke(canvas, x + 1, col);
 
-				col = peek(pen, *src >> 4);
-				poke(canvas, x + 2, col);
-				poke(canvas, x + 3, col);
-			}
-		break;
+					col = peek(pen, *src >> 4);
+					poke(canvas, x + 2, col);
+					poke(canvas, x + 3, col);
+				}
+			break;
 
-	case VBI_DOUBLE_SIZE2:
-		src += 30;
+		case VBI_DOUBLE_SIZE2:
+			src += 30;
 
-	case VBI_DOUBLE_SIZE:
-		for (y = 0; y < TCH / 2; canvas += rowstride * 2, y++)
-			for (x = 0; x < 12 * 2; src++, x += 4) {
-				col = peek(pen, *src & 15);
-				poke(canvas, x + 0, col);
-				poke(canvas, x + 1, col);
-				poke(canvas, x + rowstride / canvas_type + 0, col);
-				poke(canvas, x + rowstride / canvas_type + 1, col);
+		case VBI_DOUBLE_SIZE:
+			for (y = 0; y < TCH / 2; canvas += rowstride * 2, y++)
+				for (x = 0; x < 12 * 2; src++, x += 4) {
+					col = peek(pen, *src & 15);
+					poke(canvas, x + 0, col);
+					poke(canvas, x + 1, col);
+					poke(canvas, x + rowstride / canvas_type + 0, col);
+					poke(canvas, x + rowstride / canvas_type + 1, col);
 
-				col = peek(pen, *src >> 4);
-				poke(canvas, x + 2, col);
-				poke(canvas, x + 3, col);
-				poke(canvas, x + rowstride / canvas_type + 2, col);
-				poke(canvas, x + rowstride / canvas_type + 3, col);
-			}
-		break;
+					col = peek(pen, *src >> 4);
+					poke(canvas, x + 2, col);
+					poke(canvas, x + 3, col);
+					poke(canvas, x + rowstride / canvas_type + 2, col);
+					poke(canvas, x + rowstride / canvas_type + 3, col);
+				}
+			break;
 
-	default:
-		break;
+		default:
+			break;
 	}
 }
 
@@ -481,12 +488,12 @@ draw_drcs(int canvas_type, uint8_t *canvas, unsigned int rowstride,
  * @param color Color value of @a canvas_type.
  * @param cw Character width in pixels.
  * @param ch Character height in pixels.
- * 
+ *
  * Draw blank character.
  */
 static inline void
 draw_blank(int canvas_type, uint8_t *canvas, unsigned int rowstride,
-	   unsigned int color, int cw, int ch)
+		unsigned int color, int cw, int ch)
 {
 	int x, y;
 
@@ -509,30 +516,30 @@ draw_blank(int canvas_type, uint8_t *canvas, unsigned int rowstride,
  * @param row First source row, 0 ... pg->rows - 1.
  * @param width Number of columns to draw, 1 ... pg->columns.
  * @param height Number of rows to draw, 1 ... pg->rows.
- * 
+ *
  * Draw a subsection of a Closed Caption vbi_page. In this mode one
  * character occupies 16 x 26 pixels.
  */
 void
 vbi_draw_cc_page_region(vbi_page *pg,
-			vbi_pixfmt fmt, void *canvas, int rowstride,
-			int column, int row, int width, int height)
+		vbi_pixfmt fmt, void *canvas, int rowstride,
+		int column, int row, int width, int height)
 {
-        union {
-	        vbi_rgba        rgba[2];
-	        uint8_t         pal8[2];
-        } pen;
+	union {
+		vbi_rgba        rgba[2];
+		uint8_t         pal8[2];
+	} pen;
 	int count, row_adv;
 	vbi_char *ac;
-        int canvas_type, fg_opacity, bg_opacity;
+	int canvas_type, fg_opacity, bg_opacity;
 
 	if (fmt == VBI_PIXFMT_RGBA32_LE) {
-                canvas_type = 4;
+		canvas_type = 4;
 	} else if (fmt == VBI_PIXFMT_PAL8) {
-                canvas_type = 1;
-        } else {
+		canvas_type = 1;
+	} else {
 		return;
-        }
+	}
 
 	if (0) {
 		int i, j;
@@ -542,9 +549,9 @@ vbi_draw_cc_page_region(vbi_page *pg,
 			ac = &pg->text[i * pg->columns];
 			for (j = 0; j < pg->columns; j++)
 				fprintf(stderr, "%d%d%02x ",
-					ac[j].foreground,
-					ac[j].background,
-					ac[j].unicode & 0xFF);
+						ac[j].foreground,
+						ac[j].background,
+						ac[j].unicode & 0xFF);
 			fprintf(stderr, "\n");
 		}
 	}
@@ -558,41 +565,41 @@ vbi_draw_cc_page_region(vbi_page *pg,
 		ac = &pg->text[row * pg->columns + column];
 
 		for (count = width; count > 0; count--, ac++) {
-                        if (canvas_type == 1) {
-                            pen.pal8[0] = ac->background;
-                            pen.pal8[1] = ac->foreground;
-                        } else {
-                            bg_opacity = ac->opacity&0x0f;
-                            fg_opacity = (ac->opacity&0Xf0) >> 4;
+			if (canvas_type == 1) {
+				pen.pal8[0] = ac->background;
+				pen.pal8[1] = ac->foreground;
+			} else {
+				bg_opacity = ac->opacity&0x0f;
+				fg_opacity = (ac->opacity&0Xf0) >> 4;
 
-                            if (bg_opacity == VBI_TRANSPARENT_SPACE){
-                                pen.rgba[0] = 0;
-                            }else if (bg_opacity == VBI_SEMI_TRANSPARENT){
-                                pen.rgba[0] = pg->color_map[ac->background] & 0x80000000;
-                            }else{ 
-                                pen.rgba[0] = pg->color_map[ac->background];
-                            }
+				if (bg_opacity == VBI_TRANSPARENT_SPACE) {
+					pen.rgba[0] = 0;
+				}else if (bg_opacity == VBI_SEMI_TRANSPARENT){
+					pen.rgba[0] = pg->color_map[ac->background] & 0x80000000;
+				}else{
+					pen.rgba[0] = pg->color_map[ac->background];
+				}
 
-                            if (fg_opacity == VBI_TRANSPARENT_SPACE){
-                                pen.rgba[1] = 0;
-                            }else if (fg_opacity == VBI_SEMI_TRANSPARENT){
-                                pen.rgba[1] = pg->color_map[ac->foreground] & 0x80000000;
-                            }else{ 
-                                pen.rgba[1] = pg->color_map[ac->foreground];
-                            }
-                        }
+				if (fg_opacity == VBI_TRANSPARENT_SPACE) {
+					pen.rgba[1] = 0;
+				}else if (fg_opacity == VBI_SEMI_TRANSPARENT){
+					pen.rgba[1] = pg->color_map[ac->foreground] & 0x80000000;
+				}else{
+					pen.rgba[1] = pg->color_map[ac->foreground];
+				}
+			}
 
 			draw_char (canvas_type,
-				   (uint8_t *) canvas,
-				   rowstride,
-				   (uint8_t *) &pen,
-				   (uint8_t *) ccfont2_bits,
-				   CCPL, CCW, CCH,
-				   unicode_ccfont2 (ac->unicode, ac->italic),
-				   0 /* bold */,
-				   (ac->underline
-				    * (3 << 24)) /* cell row 24, 25 */,
-				   VBI_NORMAL_SIZE);
+					(uint8_t *) canvas,
+					rowstride,
+					(uint8_t *) &pen,
+					(uint8_t *) ccfont2_bits,
+					CCPL, CCW, CCH,
+					unicode_ccfont2 (ac->unicode, ac->italic),
+					0 /* bold */,
+					(ac->underline
+					 * (3 << 24)) /* cell row 24, 25 */,
+					VBI_NORMAL_SIZE);
 
 			canvas = (uint8_t *) canvas
 				+ CCW * canvas_type;
@@ -620,45 +627,83 @@ vbi_draw_cc_page_region(vbi_page *pg,
  * @param flash_on If FALSE, draw characters flagged 'blink' (see vbi_char) as
  *   space (U+0020).
  * @param subtitle If TRUE, draw subtitle mode teletext.
- * 
+ *
  * Draw a subsection of a Teletext vbi_page. In this mode one
  * character occupies 12 x 10 pixels.  Note this function does
  * not consider transparency (e.g. on boxed pages)
  */
+/*
+   @mode 1st bit, display page/only pgno
+   */
 void
 vbi_draw_vt_page_region(vbi_page *pg,
-			vbi_pixfmt fmt, void *canvas, int rowstride,
-			int column, int row, int width, int height,
-			int reveal, int flash_on, int subtitle)
+		vbi_pixfmt fmt, void *canvas, int rowstride,
+		int column, int row, int width, int height,
+		int reveal, int flash_on, int subtitle, int mode,
+		int bg_transparent, int pause, char* time, int subno)
 {
-        union {
-	        vbi_rgba        rgba[64];
-	        uint8_t         pal8[64];
-        } pen;
-	int count, row_adv;
-	int conceal, off, unicode;
-	vbi_char *ac;
-        int canvas_type;
-	int i;
+	union {
+		vbi_rgba        rgba[64];
+		uint8_t         pal8[64];
+	} pen;
+	int                          count, row_adv;
+	int                          conceal, off, unicode;
+	vbi_char                    *ac;
+	int                          canvas_type;
+	int                          i;
+	static uint8_t               flash_count = 0;
+	char                         subno_row_buffer[128] = {0};
+	char page_no_buf[8] = {0};
+
+	if (!pg || !canvas)
+	{
+		LOGI("pg canvas null");
+		return;
+	}
 
 	if (fmt == VBI_PIXFMT_RGBA32_LE) {
-                canvas_type = 4;
+		canvas_type = 4;
 	} else if (fmt == VBI_PIXFMT_PAL8) {
-                canvas_type = 1;
-        } else {
+		canvas_type = 1;
+	} else {
 		return;
-        }
+	}
+
+	snprintf (page_no_buf, sizeof (page_no_buf),
+		  "P%x     ", pg->pgno);
 
 	if (0) {
 		int i, j;
 
 		for (i = 0; i < pg->rows; i++) {
-			fprintf(stderr, "%2d: ", i);
+			LOGI("row: %2d: ", i);
 			ac = &pg->text[i * pg->columns];
 			for (j = 0; j < pg->columns; j++)
-				fprintf(stderr, "%04x ", ac[j].unicode);
-			fprintf(stderr, "\n");
+				LOGI("%04x ", ac[j].unicode);
 		}
+	}
+
+	//Prepare subno row, at the bottom, the 25th row
+#if 0
+	if (subno != 0)
+	{
+		if (subno > 10)
+			LOGI("Subno too large");
+		else
+		{
+			for (i = 1; i <= subno; i++)
+			{
+				snprintf(subno_row_buffer+3*(i-1), sizeof(subno_row_buffer)-3*(i+1),
+					"%02d ", i);
+			}
+		}
+	}
+#endif
+
+	if (time)
+	{
+		for (i=0; i<8; i++)
+			pg->text[32+i].unicode = _vbi_to_ascii(time[i]);
 	}
 
 	if (rowstride == -1)
@@ -671,10 +716,13 @@ vbi_draw_vt_page_region(vbi_page *pg,
 
 	if (pg->drcs_clut)
 		for (i = 2; i < 2 + 8 + 32; i++)
-                        if (canvas_type == 1)
-                                pen.pal8[i] = pg->drcs_clut[i];
-                        else
-                                pen.rgba[i] = pg->color_map[pg->drcs_clut[i]];
+			if (canvas_type == 1)
+				pen.pal8[i] = pg->drcs_clut[i];
+			else
+				pen.rgba[i] = pg->color_map[pg->drcs_clut[i]];
+
+	//Add extra row to display sub page no.
+	//height = height + 1;
 
 	for (; height > 0; height--, row++) {
 		ac = &pg->text[row * pg->columns + column];
@@ -687,20 +735,36 @@ vbi_draw_vt_page_region(vbi_page *pg,
 			else
 				unicode = ac->unicode;
 
-			if (subtitle && (row == 0))
-				unicode = 0x0020;
-
+			if (pause == 1)
+			{
+				if (row == 0)
+				{
+					if (count >= width - 3)
+					{
+						if (count == width - 1)
+							unicode = 0x18;
+						else if (count == width - 2)
+							unicode = 0x19;
+						else
+							unicode = 0x20;
+					}
+				}
+			}
+#if 0
 			if (!subtitle) {
 				transparent = 0;
-			} else if (subtitle == 1) {
+			} else
+			if (subtitle == 1) {
 				if (vbi_is_drcs(unicode) || unicode==0x0020)
 					transparent = 1;
 				else
 					transparent = 0;
-			} else {
-				if (row == 0) {
-					transparent = 1;
-				} else if (vbi_is_drcs(unicode) || unicode==0x0020) {
+			} else
+#endif
+			{
+
+#if 0
+				else if (subtitle && (vbi_is_drcs(unicode) || unicode==0x0020)) {
 					vbi_char *tc;
 					int n, uc;
 					int left, right;
@@ -731,57 +795,197 @@ vbi_draw_vt_page_region(vbi_page *pg,
 						}
 					}
 
+
 					transparent = !(left & right);
-				} else {
+				}
+
+				else {
 					transparent = 0;
+				}
+#endif
+			}
+
+
+			if (canvas_type == 1) {
+				pen.pal8[0] = ac->background;
+				pen.pal8[1] = ac->foreground;
+			}
+			else
+			{
+				//In subtitle mode, page number position in color_map
+				// is unpredictable, so fix it to black background and white forground
+				if (row == 0)
+				{
+					if (subtitle > 0)
+					{
+						if (width - count > 3)
+							ac->opacity = VBI_TRANSPARENT_SPACE;
+						else if (width - count <= 4)
+						{
+							ac->opacity = VBI_OPAQUE;
+							pen.rgba[0] = 0xFF000000;
+							pen.rgba[1] = 0xFFFFFFFF;
+							unicode = _vbi_to_ascii(page_no_buf[width - count]);
+						}
+					}
+					else
+					{
+						pen.rgba[0] = pg->color_map[ac->background];
+						pen.rgba[1] = pg->color_map[ac->foreground];
+					}
+				}
+				else
+				{
+					pen.rgba[0] = pg->color_map[ac->background];
+					pen.rgba[1] = pg->color_map[ac->foreground];
+				}
+
+				if (ac->opacity == VBI_TRANSPARENT_SPACE) {
+					pen.rgba[0] &= 0x00FFFFFF;
+					pen.rgba[1] &= 0x00FFFFFF;
+					ac->unicode = 0x20;
+				} else if (ac->opacity == VBI_OPAQUE) {
+					pen.rgba[0] |= 0xFF000000;
+					pen.rgba[1] |= 0xFF000000;
+				} else if (ac->opacity == VBI_SEMI_TRANSPARENT) {
+					pen.rgba[0] |= 0xFF000000;
+					pen.rgba[1] |= 0xFF000000;
+				} else if (ac->opacity == VBI_TRANSPARENT_FULL) {
+					pen.rgba[0] &= 0x00FFFFFF;
+					pen.rgba[1] &= 0xFFFFFFFF;
+				} else {
+					LOGI("char opacity may not right");
 				}
 			}
 
-                        if (canvas_type == 1) {
-                                pen.pal8[0] = ac->background;
-                                pen.pal8[1] = ac->foreground;
-                        } else {
-                                pen.rgba[0] = pg->color_map[ac->background];
-                                pen.rgba[1] = pg->color_map[ac->foreground];
+			//Subpage row number
+#if 0
+			if (height == 1)
+			{
+				if (subno > 1 && subtitle == 0)
+				{
 
-				if (transparent) {
-					pen.rgba[0] = 0x00FFFFFF;
-               	                	pen.rgba[1] = 0x00FFFFFF;
+					if ((width - count)/3 <= (subno-1))
+					{
+						unicode = subno_row_buffer[width - count];
+						if (pg->subno == ((width-count)/3+1))
+							pen.rgba[1] = 0xFF0000FF;
+						else
+							pen.rgba[1] = 0xFFFFFFFF;
+						pen.rgba[0] = pg->color_map[pg->text[0].background];
+					}
+					else
+					{
+						unicode = 0x0020;
+						pen.rgba[0] = pg->color_map[pg->text[0].background];
+						pen.rgba[1] = 0x00000000;
+					}
+
+					ac->size = VBI_NORMAL_SIZE;
+					ac->italic = 0;
+					ac->bold = 0;
+					ac->underline = 0;
+					//LOGI("subno %d height %d col %d unicode %x for %x back %x size %d",
+						// subno, height, width - count, unicode, pen.rgba[1], pen.rgba[0], ac->size);
 				}
+				else if (subtitle == 0)
+				{
+					unicode = 0x0020;
+					pen.rgba[0] = pg->color_map[pg->text[0].background];
+					pen.rgba[1] = 0x00000000;
 
-				if (subtitle == 1)
+					ac->size = VBI_NORMAL_SIZE;
+					ac->italic = 0;
+					ac->bold = 0;
+					ac->underline = 0;
+				}
+				else if (subtitle > 0)
+				{
+					unicode = 0x0020;
+					pen.rgba[0] = 0x00000000;
+					pen.rgba[1] = 0x00000000;
+
+					ac->size = VBI_NORMAL_SIZE;
+					ac->italic = 0;
+					ac->bold = 0;
+					ac->underline = 0;
+				}
+			}
+#endif
+			if (bg_transparent > 0)
+			{
+				pen.rgba[0] &= 0x00FFFFFF;
+			}
+
+			if (mode == 1)//Display only page number
+			{
+				if ((row == 0 && (width - count > 3)) ||
+					//(row == 0 && (count == width)) ||
+					(row>0))
+				{
 					pen.rgba[0] = 0x00FFFFFF;
-                        }
+					pen.rgba[1] = 0x00FFFFFF;
+					unicode = 0x20;
+					ac->size = VBI_NORMAL_SIZE;
+					ac->italic = 0;
+					ac->underline = 0;
+					ac->bold = 0;
+				}
+			}
+			else if (mode == 2) //Display only clock
+			{
+				if ((row == 0 && (count > 9)) || (row>0))
+				{
+					pen.rgba[0] = 0x00FFFFFF;
+					pen.rgba[1] = 0x00FFFFFF;
+					unicode = 0x20;
+					ac->size = VBI_NORMAL_SIZE;
+					ac->italic = 0;
+					ac->underline = 0;
+					ac->bold = 0;
+				}
+			}
 
 			switch (ac->size) {
-			case VBI_OVER_TOP:
-			case VBI_OVER_BOTTOM:
-				break;
+				case VBI_OVER_TOP:
+				case VBI_OVER_BOTTOM:
+					break;
 
-			default:
-				if (vbi_is_drcs(unicode)) {
-					uint8_t *font = pg->drcs[(unicode >> 6) & 0x1F];
+				default:
+					if (vbi_is_drcs(unicode)) {
+						uint8_t *font = pg->drcs[(unicode >> 6) & 0x1F];
 
-					if (font)
-						draw_drcs(canvas_type, canvas, rowstride,
-							  (uint8_t *) &pen, ac->drcs_clut_offs,
-							  font, unicode & 0x3F, ac->size);
-					else /* shouldn't happen */
-						draw_blank(canvas_type, canvas, rowstride,
-							   ((canvas_type == 1) ? pen.pal8[0]: pen.rgba[0]),
-                                                           TCW, TCH);
-				} else {
-					draw_char (canvas_type,
-						   canvas,
-						   rowstride,
-						   (uint8_t *) &pen,
-						   (uint8_t *) wstfont2_bits,
-						   TCPL, TCW, TCH,
-						   unicode_wstfont2 (unicode, ac->italic),
-						   ac->bold,
-						   ac->underline << 9 /* cell row 9 */,
-						   ac->size);
-				}
+						if (font)
+							draw_drcs(canvas_type, canvas, rowstride,
+									(uint8_t *) &pen, ac->drcs_clut_offs,
+									font, unicode & 0x3F, ac->size);
+						else /* shouldn't happen */
+							draw_blank(canvas_type, canvas, rowstride,
+									((canvas_type == 1) ? pen.pal8[0]: pen.rgba[0]),
+									TCW, TCH);
+					} else if ((pause == 1) && (unicode == 0x18 || unicode == 0x19)) {
+						draw_char (canvas_type,
+								   canvas,
+								   rowstride,
+								   (uint8_t *) &pen,
+								   (uint8_t *) psymbol_bits,
+								   PSCPL, TCW, TCH,
+								   unicode - 0x18,
+								   0,
+								   0,
+								   0);
+					} else {
+						draw_char (canvas_type,
+								canvas,
+								rowstride,
+								(uint8_t *) &pen,
+								(uint8_t *) wstfont2_bits,
+								TCPL, TCW, TCH,
+								unicode_wstfont2 (unicode, ac->italic),
+								ac->bold,
+								ac->underline << 9 /* cell row 9 */,
+								ac->size);
+					}
 			}
 
 			canvas = (uint8_t *)canvas + TCW * canvas_type;
@@ -807,8 +1011,8 @@ vbi_draw_vt_page_region(vbi_page *pg,
 void
 vbi_get_max_rendered_size(int *w, int *h)
 {
-  if (w) *w = 41 * TCW;
-  if (h) *h = 25 * TCH;
+	if (w) *w = 41 * TCW;
+	if (h) *h = 25 * TCH;
 }
 
 /**
@@ -821,8 +1025,8 @@ vbi_get_max_rendered_size(int *w, int *h)
 void
 vbi_get_vt_cell_size(int *w, int *h)
 {
-  if (w) *w = TCW;
-  if (h) *h = TCH;
+	if (w) *w = TCW;
+	if (h) *h = TCH;
 }
 
 /*
@@ -846,17 +1050,17 @@ typedef struct gfx_instance
 	 *  still possible in Zapping using the screenshot plugin).
 	 */
 	unsigned		titled : 1;
-        /*
-         *  By default a title string is embedded in the images which
-         *  names the page number and optionally the network. This
-         *  option can be used to suppress this feature
-         */
+	/*
+	 *  By default a title string is embedded in the images which
+	 *  names the page number and optionally the network. This
+	 *  option can be used to suppress this feature
+	 */
 	unsigned		transparency : 1;
-        /*
-         *  By default, image formats which support transparency
-         *  use transparent background for boxed pages. This option
-         *  can be used to define transparent areas as black.
-         */
+	/*
+	 *  By default, image formats which support transparency
+	 *  use transparent background for boxed pages. This option
+	 *  can be used to define transparent areas as black.
+	 */
 } gfx_instance;
 
 static vbi_export *
@@ -879,24 +1083,24 @@ gfx_delete(vbi_export *e)
 
 static vbi_option_info
 gfx_options[] = {
-        /* all formats */
+	/* all formats */
 	VBI_OPTION_BOOL_INITIALIZER
-	  ("aspect", N_("Correct aspect ratio"),
-	   TRUE, N_("Approach an image aspect ratio similar to "
-		    "a real TV. This will double the image size.")),
-        /* XPM and PNG only */
+		("aspect", N_("Correct aspect ratio"),
+		 TRUE, N_("Approach an image aspect ratio similar to "
+			 "a real TV. This will double the image size.")),
+	/* XPM and PNG only */
 	VBI_OPTION_BOOL_INITIALIZER
-	  ("transparency", N_("Include transparency"),
-	   TRUE, N_("If not enabled, transparency is mapped to black.")),
+		("transparency", N_("Include transparency"),
+		 TRUE, N_("If not enabled, transparency is mapped to black.")),
 	VBI_OPTION_BOOL_INITIALIZER
-	  ("titled", N_("Include page title"),
-	   TRUE, N_("Embed a title string which names network "
-		    "and page number."))
+		("titled", N_("Include page title"),
+		 TRUE, N_("Embed a title string which names network "
+			 "and page number."))
 };
 
 #define elements(array) (sizeof(array) / sizeof(array[0]))
 
-static vbi_option_info *
+	static vbi_option_info *
 option_enum(vbi_export *e, int index)
 {
 	e = e;
@@ -962,7 +1166,7 @@ option_set(vbi_export *e, const char *keyword, va_list args)
  * @param pg Page reference
  * @param title Output buffer for returning the title
  * @param title_max Size of @a title buffer
- * 
+ *
  * Determine a suitable label for the hardcopy.
  * The label is inserted as comment inside of XPM or PNG image files.
  */
@@ -970,34 +1174,34 @@ static void
 get_image_title(vbi_export *e, const vbi_page *pg, char *title, int title_max)
 {
 	gfx_instance *gfx = PARENT(e, gfx_instance, export);
-        int size = 0;
+	int size = 0;
 
-        if (!gfx->titled) {
-                title[0] = 0;
-                return;
-        }
+	if (!gfx->titled) {
+		title[0] = 0;
+		return;
+	}
 
-        if (e->network)
-                size = snprintf(title, title_max - 1, "%s ", e->network);
-        else
-                title[0] = 0;
+	if (e->network)
+		size = snprintf(title, title_max - 1, "%s ", e->network);
+	else
+		title[0] = 0;
 
-        /*
-         *  FIXME
-         *  ISO 8859-1 (Latin-1) character set required,
-         *  see png spec for other
-         */
-        if (pg->pgno < 0x100) {
-                size += snprintf(title + size, title_max - size - 1,
-                                 "Closed Caption"); /* no i18n, proper name */
-        } else if (pg->subno != VBI_ANY_SUBNO) {
-                size += snprintf(title + size, title_max - size - 1,
-                                 _("Teletext Page %3x.%x"),
-                                 pg->pgno, pg->subno);
-        } else {
-                size += snprintf(title + size, title_max - size - 1,
-                                 _("Teletext Page %3x"), pg->pgno);
-        }
+	/*
+	 *  FIXME
+	 *  ISO 8859-1 (Latin-1) character set required,
+	 *  see png spec for other
+	 */
+	if (pg->pgno < 0x100) {
+		size += snprintf(title + size, title_max - size - 1,
+				"Closed Caption"); /* no i18n, proper name */
+	} else if (pg->subno != VBI_ANY_SUBNO) {
+		size += snprintf(title + size, title_max - size - 1,
+				_("Teletext Page %3x.%x"),
+				pg->pgno, pg->subno);
+	} else {
+		size += snprintf(title + size, title_max - size - 1,
+				_("Teletext Page %3x"), pg->pgno);
+	}
 }
 
 
@@ -1007,7 +1211,7 @@ get_image_title(vbi_export *e, const vbi_page *pg, char *title, int title_max)
 
 static vbi_bool
 ppm_export			(vbi_export *		e,
-				 vbi_page *		pg)
+		vbi_page *		pg)
 {
 	gfx_instance *gfx = PARENT(e, gfx_instance, export);
 	vbi_rgba *rgba_image;
@@ -1059,7 +1263,7 @@ ppm_export			(vbi_export *		e,
 		if (NULL == rgba_image) {
 			_vbi_export_malloc_error (e);
 			goto failed;
-	}
+		}
 
 		rgba_row_buffer = rgba_image;
 	} else {
@@ -1075,7 +1279,7 @@ ppm_export			(vbi_export *		e,
 		   vbi_export_printf() below will allocate more memory. */
 		margin = (2 == scale) ? image_width * sizeof (vbi_rgba): 0;
 		needed = MAX (rgba_row_size - margin,
-			      ppm_row_size) + margin;
+				ppm_row_size) + margin;
 
 		if (VBI_EXPORT_TARGET_ALLOC == e->target) {
 			/* The buffer must hold the entire PPM image.
@@ -1098,8 +1302,8 @@ ppm_export			(vbi_export *		e,
 		rgba_row_buffer = (const vbi_rgba *)
 			(e->buffer.data
 			 + ((e->buffer.capacity - rgba_row_size)
-			    & -sizeof (*rgba_row_buffer))); /* align */
-			}
+				 & -sizeof (*rgba_row_buffer))); /* align */
+	}
 
 	for (row = 0; row < (unsigned int) pg->rows; ++row) {
 		uint8_t *d;
@@ -1109,84 +1313,84 @@ ppm_export			(vbi_export *		e,
 
 		if (pg->columns < 40) {
 			vbi_draw_cc_page_region (pg, VBI_PIXFMT_RGBA32_LE,
-						 rgba_row_buffer,
-						 /* rowstride: auto */ -1,
-						 /* column */ 0, row,
-						 pg->columns, /* rows */ 1);
+					rgba_row_buffer,
+					/* rowstride: auto */ -1,
+					/* column */ 0, row,
+					pg->columns, /* rows */ 1);
 		} else {
 			vbi_draw_vt_page_region (pg, VBI_PIXFMT_RGBA32_LE,
-						 rgba_row_buffer,
-						 /* rowstride: auto */ -1,
-						 /* column */ 0, row,
-						 pg->columns, /* rows */ 1,
-						 /* reveal */ !e->reveal,
-						 /* flash_on */ TRUE, FALSE);
-			}
+					rgba_row_buffer,
+					/* rowstride: auto */ -1,
+					/* column */ 0, row,
+					pg->columns, /* rows */ 1,
+					/* reveal */ !e->reveal,
+					/* flash_on */ TRUE, FALSE, 0, 0, 0, NULL, 0);
+		}
 
 		d = (uint8_t *) e->buffer.data + e->buffer.offset;
 		s = rgba_row_buffer;
 
 		switch (scale) {
-		case 0:
-			count = char_height >> 1;
-			do {
-				d_end = d + image_width * 3;
+			case 0:
+				count = char_height >> 1;
 				do {
-					vbi_rgba n1 = s[image_width];
-					vbi_rgba n0 = *s++;
+					d_end = d + image_width * 3;
+					do {
+						vbi_rgba n1 = s[image_width];
+						vbi_rgba n0 = *s++;
 
-					d[0] = ((n0 & 0xFF) + (n1 & 0xFF)
-						+ 0x01) >> 1;
-					d[1] = ((n0 & 0xFF00) + (n1 & 0xFF00)
-						+ 0x0100) >> 9;
-					d[2] = ((n0 & 0xFF0000)
-						+ (n1 & 0xFF0000)
-						+ 0x010000) >> 17;
-					d += 3;
-				} while (d < d_end);
+						d[0] = ((n0 & 0xFF) + (n1 & 0xFF)
+								+ 0x01) >> 1;
+						d[1] = ((n0 & 0xFF00) + (n1 & 0xFF00)
+								+ 0x0100) >> 9;
+						d[2] = ((n0 & 0xFF0000)
+								+ (n1 & 0xFF0000)
+								+ 0x010000) >> 17;
+						d += 3;
+					} while (d < d_end);
 
-				s += image_width;
-			} while (--count > 0);
+					s += image_width;
+				} while (--count > 0);
 
-			break;
+				break;
 
-		case 1:
-			d_end = d + image_width * char_height * 3;
-			do {
-				vbi_rgba n = *s++;
-
-				d[0] = n;
-				d[1] = n >> 8;
-				d[2] = n >> 16;
-				d += 3;
-			} while (d < d_end);
-
-			break;
-
-		case 2:
-			count = char_height;
-			do {
-				d_end = d + image_width * 3;
+			case 1:
+				d_end = d + image_width * char_height * 3;
 				do {
 					vbi_rgba n = *s++;
 
 					d[0] = n;
 					d[1] = n >> 8;
 					d[2] = n >> 16;
-					d[image_width * 3 + 0] = n;
-					d[image_width * 3 + 1] = n >> 8;
-					d[image_width * 3 + 2] = n >> 16;
 					d += 3;
 				} while (d < d_end);
 
-				d += image_width * 3;
-			} while (--count > 0);
+				break;
 
-			break;
+			case 2:
+				count = char_height;
+				do {
+					d_end = d + image_width * 3;
+					do {
+						vbi_rgba n = *s++;
 
-		default:
-			assert (0);
-	}
+						d[0] = n;
+						d[1] = n >> 8;
+						d[2] = n >> 16;
+						d[image_width * 3 + 0] = n;
+						d[image_width * 3 + 1] = n >> 8;
+						d[image_width * 3 + 2] = n >> 16;
+						d += 3;
+					} while (d < d_end);
+
+					d += image_width * 3;
+				} while (--count > 0);
+
+				break;
+
+			default:
+				assert (0);
+		}
 
 		e->buffer.offset = (char *) d - e->buffer.data;
 
@@ -1196,7 +1400,7 @@ ppm_export			(vbi_export *		e,
 
 	result = TRUE;
 
- failed:
+failed:
 	free (rgba_image);
 
 	return result;
@@ -1226,141 +1430,141 @@ vbi_export_class_ppm = {
 VBI_AUTOREG_EXPORT_MODULE(vbi_export_class_ppm)
 
 
-/*
- * PNG and XPM drawing functions (palette-based)
- */
+	/*
+	 * PNG and XPM drawing functions (palette-based)
+	 */
 static void
 draw_char_cc_indexed(uint8_t * canvas, int rowstride,  uint8_t * pen,
-		     int unicode, vbi_char *ac)
+		int unicode, vbi_char *ac)
 {
 	draw_char(sizeof(*canvas), canvas, rowstride,
-		  pen, (uint8_t *) ccfont2_bits, CCPL, CCW, CCH,
-		  unicode_ccfont2(unicode, ac->italic), 0 /* bold */,
-		  ac->underline * (3 << 24) /* cell row 24, 25 */,
-		  VBI_NORMAL_SIZE);
+			pen, (uint8_t *) ccfont2_bits, CCPL, CCW, CCH,
+			unicode_ccfont2(unicode, ac->italic), 0 /* bold */,
+			ac->underline * (3 << 24) /* cell row 24, 25 */,
+			VBI_NORMAL_SIZE);
 }
 
 static void
 draw_char_vt_indexed(uint8_t * canvas, int rowstride,  uint8_t * pen,
-		     int unicode, vbi_char *ac)
+		int unicode, vbi_char *ac)
 {
 	draw_char(sizeof(*canvas), canvas, rowstride,
-		  pen, (uint8_t *) wstfont2_bits, TCPL, TCW, TCH,
-		  unicode_wstfont2(unicode, ac->italic), ac->bold,
-		  ac->underline << 9 /* cell row 9 */, ac->size);
+			pen, (uint8_t *) wstfont2_bits, TCPL, TCW, TCH,
+			unicode_wstfont2(unicode, ac->italic), ac->bold,
+			ac->underline << 9 /* cell row 9 */, ac->size);
 }
 
 static void
 draw_drcs_indexed(uint8_t * canvas, int rowstride, uint8_t * pen,
-		  uint8_t *font, int glyph, vbi_size size)
+		uint8_t *font, int glyph, vbi_size size)
 {
 	draw_drcs(sizeof(*canvas), canvas, rowstride,
-		  (uint8_t *) pen, 0, font, glyph, size);
+			(uint8_t *) pen, 0, font, glyph, size);
 }
 
 static void
 draw_row_indexed(vbi_page * pg, vbi_char * ac, uint8_t * canvas, uint8_t * pen,
-                 int rowstride, vbi_bool conceal, vbi_bool is_cc)
+		int rowstride, vbi_bool conceal, vbi_bool is_cc)
 {
-        const int cw = is_cc ? CCW : TCW;
-        const int ch = is_cc ? CCH : TCH;
+	const int cw = is_cc ? CCW : TCW;
+	const int ch = is_cc ? CCH : TCH;
 	void (* draw_char_indexed)(uint8_t *, int, uint8_t *, int, vbi_char *)
-                = is_cc ? draw_char_cc_indexed : draw_char_vt_indexed;
+		= is_cc ? draw_char_cc_indexed : draw_char_vt_indexed;
 	int column;
-        int unicode;
+	int unicode;
 
-        for (column = 0; column < pg->columns ; canvas += cw, column++, ac++) {
+	for (column = 0; column < pg->columns ; canvas += cw, column++, ac++) {
 
-				if (ac->size == VBI_OVER_TOP
-				    || ac->size == VBI_OVER_BOTTOM)
-					continue;
+		if (ac->size == VBI_OVER_TOP
+				|| ac->size == VBI_OVER_BOTTOM)
+			continue;
 
-				unicode = (ac->conceal & conceal) ? 0x0020u : ac->unicode;
+		unicode = (ac->conceal & conceal) ? 0x0020u : ac->unicode;
 
-				switch (ac->opacity) {
-				case VBI_TRANSPARENT_SPACE:
-					/*
-					 *  Transparent foreground and background.
-					 */
-                        draw_blank(sizeof(*canvas), canvas,
-						   rowstride, VBI_TRANSPARENT_BLACK, cw, ch);
-					break;
+		switch (ac->opacity) {
+			case VBI_TRANSPARENT_SPACE:
+				/*
+				 *  Transparent foreground and background.
+				 */
+				draw_blank(sizeof(*canvas), canvas,
+						rowstride, VBI_TRANSPARENT_BLACK, cw, ch);
+				break;
 
-				case VBI_TRANSPARENT_FULL:
-					/*
-					 *  Transparent background, opaque foreground. Currently not used.
-					 *  Mind Teletext level 2.5 foreground and background transparency
-					 *  by referencing colormap entry 8, VBI_TRANSPARENT_BLACK.
-					 *  The background of multicolor DRCS is ambiguous, so we make
-					 *  them opaque.
-					 */
-					if (vbi_is_drcs(unicode)) {
-						uint8_t *font = pg->drcs[(unicode >> 6) & 0x1F];
+			case VBI_TRANSPARENT_FULL:
+				/*
+				 *  Transparent background, opaque foreground. Currently not used.
+				 *  Mind Teletext level 2.5 foreground and background transparency
+				 *  by referencing colormap entry 8, VBI_TRANSPARENT_BLACK.
+				 *  The background of multicolor DRCS is ambiguous, so we make
+				 *  them opaque.
+				 */
+				if (vbi_is_drcs(unicode)) {
+					uint8_t *font = pg->drcs[(unicode >> 6) & 0x1F];
 
-						pen[0] = VBI_TRANSPARENT_BLACK;
-						pen[1] = ac->foreground;
-
-                                if (font && !is_cc)
-							draw_drcs_indexed(canvas, rowstride, pen,
-									  font, unicode & 0x3F, ac->size);
-						else /* shouldn't happen */
-							draw_blank(sizeof(*canvas), (uint8_t *) canvas,
-								   rowstride, VBI_TRANSPARENT_BLACK, cw, ch);
-					} else {
-						pen[0] = VBI_TRANSPARENT_BLACK;
-						pen[1] = ac->foreground;
-
-						draw_char_indexed(canvas, rowstride, pen, unicode, ac);
-					}
-
-					break;
-
-				case VBI_SEMI_TRANSPARENT:
-					/*
-					 *  Translucent background (for 'boxed' text), opaque foreground.
-					 *  The background of multicolor DRCS is ambiguous, so we make
-					 *  them completely translucent. 
-					 */
-					if (vbi_is_drcs(unicode)) {
-						uint8_t *font = pg->drcs[(unicode >> 6) & 0x1F];
-
-						pen[64] = ac->background + 40;
-						pen[65] = ac->foreground;
-
-                                if (font && !is_cc)
-							draw_drcs_indexed(canvas, rowstride,
-									  (uint8_t *)(pen + 64),
-									  font, unicode & 0x3F, ac->size);
-						else /* shouldn't happen */
-							draw_blank(sizeof(*canvas), (uint8_t *) canvas,
-								   rowstride, VBI_TRANSPARENT_BLACK, cw, ch);
-					} else {
-						pen[0] = ac->background + 40; /* translucent */
-						pen[1] = ac->foreground;
-
-						draw_char_indexed(canvas, rowstride, pen, unicode, ac);
-					}
-
-					break;
-
-				case VBI_OPAQUE:
-					pen[0] = ac->background;
+					pen[0] = VBI_TRANSPARENT_BLACK;
 					pen[1] = ac->foreground;
 
-					if (vbi_is_drcs(unicode)) {
-						uint8_t *font = pg->drcs[(unicode >> 6) & 0x1F];
+					if (font && !is_cc)
+						draw_drcs_indexed(canvas, rowstride, pen,
+								font, unicode & 0x3F, ac->size);
+					else /* shouldn't happen */
+						draw_blank(sizeof(*canvas), (uint8_t *) canvas,
+								rowstride, VBI_TRANSPARENT_BLACK, cw, ch);
+				} else {
+					pen[0] = VBI_TRANSPARENT_BLACK;
+					pen[1] = ac->foreground;
 
-                                if (font && !is_cc)
-							draw_drcs_indexed(canvas, rowstride, pen,
-									  font, unicode & 0x3F, ac->size);
-						else /* shouldn't happen */
-							draw_blank(sizeof(*canvas), (uint8_t *) canvas,
-								   rowstride, pen[0], cw, ch);
-					} else
-						draw_char_indexed(canvas, rowstride, pen, unicode, ac);
-					break;
+					draw_char_indexed(canvas, rowstride, pen, unicode, ac);
 				}
-			}
+
+				break;
+
+			case VBI_SEMI_TRANSPARENT:
+				/*
+				 *  Translucent background (for 'boxed' text), opaque foreground.
+				 *  The background of multicolor DRCS is ambiguous, so we make
+				 *  them completely translucent.
+				 */
+				if (vbi_is_drcs(unicode)) {
+					uint8_t *font = pg->drcs[(unicode >> 6) & 0x1F];
+
+					pen[64] = ac->background + 40;
+					pen[65] = ac->foreground;
+
+					if (font && !is_cc)
+						draw_drcs_indexed(canvas, rowstride,
+								(uint8_t *)(pen + 64),
+								font, unicode & 0x3F, ac->size);
+					else /* shouldn't happen */
+						draw_blank(sizeof(*canvas), (uint8_t *) canvas,
+								rowstride, VBI_TRANSPARENT_BLACK, cw, ch);
+				} else {
+					pen[0] = ac->background + 40; /* translucent */
+					pen[1] = ac->foreground;
+
+					draw_char_indexed(canvas, rowstride, pen, unicode, ac);
+				}
+
+				break;
+
+			case VBI_OPAQUE:
+				pen[0] = ac->background;
+				pen[1] = ac->foreground;
+
+				if (vbi_is_drcs(unicode)) {
+					uint8_t *font = pg->drcs[(unicode >> 6) & 0x1F];
+
+					if (font && !is_cc)
+						draw_drcs_indexed(canvas, rowstride, pen,
+								font, unicode & 0x3F, ac->size);
+					else /* shouldn't happen */
+						draw_blank(sizeof(*canvas), (uint8_t *) canvas,
+								rowstride, pen[0], cw, ch);
+				} else
+					draw_char_indexed(canvas, rowstride, pen, unicode, ac);
+				break;
+		}
+	}
 }
 
 /*
@@ -1370,7 +1574,7 @@ draw_row_indexed(vbi_page * pg, vbi_char * ac, uint8_t * canvas, uint8_t * pen,
  */
 
 static const uint8_t xpm_col_codes[40] =
-	" 1234567.BCDEFGHIJKLMNOPabcdefghijklmnop";
+" 1234567.BCDEFGHIJKLMNOPabcdefghijklmnop";
 
 /**
  * @internal
@@ -1381,7 +1585,7 @@ static const uint8_t xpm_col_codes[40] =
  * @param title Optional title to be included in extension data, or @c NULL.
  * @param creator Optional software name and version to be included in
  *   extension data, or @c NULL.
- * 
+ *
  * This function writes an XPM header and color palette for an image with
  * the given size and optional extension data.  The color palette is
  * retrieved from the page referenced by @a pg.
@@ -1391,49 +1595,49 @@ static const uint8_t xpm_col_codes[40] =
  */
 static vbi_bool
 xpm_write_header		(vbi_export *		e,
-				 const vbi_page *	pg,
-				 unsigned int		image_width,
-				 unsigned int		image_height,
-				 const char *		title,
-				 const char *		creator)
+		const vbi_page *	pg,
+		unsigned int		image_width,
+		unsigned int		image_height,
+		const char *		title,
+		const char *		creator)
 {
 	gfx_instance *gfx = PARENT(e, gfx_instance, export);
-        vbi_bool do_ext =    ((NULL != title) && (0 != title[0]))
-                          || ((NULL != creator) && (0 != creator[0]));
-        unsigned int i;
+	vbi_bool do_ext =    ((NULL != title) && (0 != title[0]))
+		|| ((NULL != creator) && (0 != creator[0]));
+	unsigned int i;
 
-        /* Warning: adapt buf size estimation when changing the text! */
-        vbi_export_printf (e,
-			   "/* XPM */\n"
-			   "static char *image[] = {\n"
-			   "/* width height ncolors chars_per_pixel */\n"
-			   "\"%d %d %d %d%s\",\n"
-			   "/* colors */\n",
-			   image_width, image_height, 40, 1,
-			   do_ext ? " XPMEXT":"");
+	/* Warning: adapt buf size estimation when changing the text! */
+	vbi_export_printf (e,
+			"/* XPM */\n"
+			"static char *image[] = {\n"
+			"/* width height ncolors chars_per_pixel */\n"
+			"\"%d %d %d %d%s\",\n"
+			"/* colors */\n",
+			image_width, image_height, 40, 1,
+			do_ext ? " XPMEXT":"");
 
-        /* Write color palette (including unused colors
+	/* Write color palette (including unused colors
 	   - could be optimized). */
-        for (i = 0; i < 40; ++i) {
-                if ((8 == i) && gfx->transparency) {
-                        vbi_export_printf (e,
-					   "\"%c c None\",\n",
-					   xpm_col_codes[i]);
-                } else {
-                        vbi_export_printf (e,
-					   "\"%c c #%02X%02X%02X\",\n",
-					   xpm_col_codes[i],
-					   pg->color_map[i] & 0xFF,
-					   (pg->color_map[i] >> 8) & 0xFF,
-					   (pg->color_map[i] >> 16) & 0xFF);
-                }
-        }
+	for (i = 0; i < 40; ++i) {
+		if ((8 == i) && gfx->transparency) {
+			vbi_export_printf (e,
+					"\"%c c None\",\n",
+					xpm_col_codes[i]);
+		} else {
+			vbi_export_printf (e,
+					"\"%c c #%02X%02X%02X\",\n",
+					xpm_col_codes[i],
+					pg->color_map[i] & 0xFF,
+					(pg->color_map[i] >> 8) & 0xFF,
+					(pg->color_map[i] >> 16) & 0xFF);
+		}
+	}
 
-        vbi_export_printf (e, "/* pixels */\n");
+	vbi_export_printf (e, "/* pixels */\n");
 
 	/* Note this also returns FALSE if any of the
 	   vbi_export_printf() calls above failed. */
-        return vbi_export_flush (e);
+	return vbi_export_flush (e);
 }
 
 /**
@@ -1442,7 +1646,7 @@ xpm_write_header		(vbi_export *		e,
  * @param title Optional title to be included in extension data, or @c NULL.
  * @param creator Optional software name and version to be included in
  *   extension data, or @c NULL.
- * 
+ *
  * This function writes an XPM "footer" (i.e. anything following the actual
  * image data) and optionally appends image title and software names as
  * extension data.
@@ -1452,35 +1656,35 @@ xpm_write_header		(vbi_export *		e,
  */
 static vbi_bool
 xpm_write_footer		(vbi_export *		e,
-				 const char *		title,
-				 const char *		creator)
+		const char *		title,
+		const char *		creator)
 {
-        char *p;
+	char *p;
 
-        if (    ((NULL != title) && (0 != title[0]))
-             || ((NULL != creator) && (0 != creator[0])) ) {
+	if (    ((NULL != title) && (0 != title[0]))
+			|| ((NULL != creator) && (0 != creator[0])) ) {
 
-                /* Warning: adapt buf size estimation when changing the text! */
-                if (NULL != title && 0 != title[0]) {
-                        while ((p = strchr(title, '"')) != NULL)
-                                *p = '\'';
-                        vbi_export_printf (e, "\"XPMEXT title %s\",\n", title);
-                }
+		/* Warning: adapt buf size estimation when changing the text! */
+		if (NULL != title && 0 != title[0]) {
+			while ((p = strchr(title, '"')) != NULL)
+				*p = '\'';
+			vbi_export_printf (e, "\"XPMEXT title %s\",\n", title);
+		}
 
-                if (NULL != creator && 0 != creator[0]) {
-                        while ((p = strchr(creator, '"')) != NULL)
-                                *p = '\'';
-                        vbi_export_printf (e, "\"XPMEXT software %s\",\n", creator);
-                }
+		if (NULL != creator && 0 != creator[0]) {
+			while ((p = strchr(creator, '"')) != NULL)
+				*p = '\'';
+			vbi_export_printf (e, "\"XPMEXT software %s\",\n", creator);
+		}
 
-                vbi_export_printf (e, "\"XPMENDEXT\"\n");
-        }
+		vbi_export_printf (e, "\"XPMENDEXT\"\n");
+	}
 
-        vbi_export_printf (e, "};\n");
+	vbi_export_printf (e, "};\n");
 
 	/* Note this also returns FALSE if any of the
 	   vbi_export_printf() calls above failed. */
-        return vbi_export_flush (e);
+	return vbi_export_flush (e);
 }
 
 /**
@@ -1493,7 +1697,7 @@ xpm_write_footer		(vbi_export *		e,
  *   - 0 to half height
  *   - 1 to normal height
  *   - 2 to double height
- * 
+ *
  * This function writes XPM image data for one Teletext or Closed Caption
  * row (i.e. several pixel lines) into the given buffer. The image is scaled
  * vertically on the fly.
@@ -1509,10 +1713,10 @@ xpm_write_footer		(vbi_export *		e,
  */
 static vbi_bool
 xpm_write_row			(vbi_export *		e,
-				 const uint8_t *	s,
-				 unsigned int		image_width,
-				 unsigned int		char_height,
-				 unsigned int		scale)
+		const uint8_t *	s,
+		unsigned int		image_width,
+		unsigned int		char_height,
+		unsigned int		scale)
 {
 	size_t needed;
 	char *d;
@@ -1526,47 +1730,47 @@ xpm_write_row			(vbi_export *		e,
 	do {
 		char *d_end;
 
-                *d++ = '"';
+		*d++ = '"';
 
 		d_end = d + image_width;
 		do {
-                        uint8_t c = *s++;
+			uint8_t c = *s++;
 
-                        if (c < sizeof (xpm_col_codes)) {
-                                *d++ = xpm_col_codes[c];
-                        } else {
-                                *d++ = '.';  /* transparent */
-                        }
-                } while (d < d_end);
+			if (c < sizeof (xpm_col_codes)) {
+				*d++ = xpm_col_codes[c];
+			} else {
+				*d++ = '.';  /* transparent */
+			}
+		} while (d < d_end);
 
-                d[0] = '"';
-                d[1] = ',';
-                d[2] = '\n';
+		d[0] = '"';
+		d[1] = ',';
+		d[2] = '\n';
 		d += 3;
 
-                if (0 == scale) {
-                        /* Scale down - use every 2nd row. */
+		if (0 == scale) {
+			/* Scale down - use every 2nd row. */
 			--char_height;
-                        s += image_width;
-                } else if (2 == scale) {
-                        /* Scale up - double each line. */
+			s += image_width;
+		} else if (2 == scale) {
+			/* Scale up - double each line. */
 			memcpy (d, d - image_width - 4, image_width + 4);
 			d += image_width + 4;
 		}
-        } while (--char_height > 0);
+	} while (--char_height > 0);
 
 	e->buffer.offset = d - e->buffer.data;
 
-        return vbi_export_flush (e);
+	return vbi_export_flush (e);
 }
 
 static vbi_bool
 xpm_export			(vbi_export *		e,
-				 vbi_page *		pg)
+		vbi_page *		pg)
 {
 	gfx_instance *gfx = PARENT(e, gfx_instance, export);
-        uint8_t pen[128];
-        char title[80];
+	uint8_t pen[128];
+	char title[80];
 	uint8_t *indexed_image;
 	unsigned int image_width;
 	unsigned int image_height;
@@ -1574,35 +1778,35 @@ xpm_export			(vbi_export *		e,
 	unsigned int char_height;
 	unsigned int scale;
 	unsigned int row;
-        vbi_bool result;
+	vbi_bool result;
 
 	indexed_image = NULL;
 	result = FALSE;
 
 	if (pg->columns < 40) /* caption */ {
 		char_width = CCW;
-                char_height = CCH;
+		char_height = CCH;
 		/* Characters are already line-doubled. */
 		scale = !!gfx->double_height;
 	} else {
 		char_width = TCW;
-                char_height = TCH;
+		char_height = TCH;
 		scale = 1 + !!gfx->double_height;
-		}
+	}
 
 	image_width = char_width * pg->columns;
 	image_height = ((char_height * pg->rows) << scale) >> 1;
 
-        get_image_title (e, pg, title, sizeof (title));
+	get_image_title (e, pg, title, sizeof (title));
 
-        if (pg->drcs_clut) {
+	if (pg->drcs_clut) {
 		unsigned int i;
 
-                for (i = 2; i < 2 + 8 + 32; i++) {
-                        pen[i]      = pg->drcs_clut[i]; /* opaque */
-                        pen[i + 64] = 40; /* translucent */
-                }
-        }
+		for (i = 2; i < 2 + 8 + 32; i++) {
+			pen[i]      = pg->drcs_clut[i]; /* opaque */
+			pen[i + 64] = 40; /* translucent */
+		}
+	}
 
 	indexed_image = malloc (image_width * char_height);
 	if (unlikely (NULL == indexed_image)) {
@@ -1616,34 +1820,34 @@ xpm_export			(vbi_export *		e,
 		size_t xpm_row_size;
 		size_t needed;
 
-	case VBI_EXPORT_TARGET_MEM:
+		case VBI_EXPORT_TARGET_MEM:
 		/* vbi_export_printf() and _vbi_export_grow_buffer_space()
 		   will check on the fly if enough space is available. */
 		break;
 
-	case VBI_EXPORT_TARGET_FP:
+		case VBI_EXPORT_TARGET_FP:
 		/* Header and footer are not e->buffered and we allocate
 		   the XPM data buffer once in xpm_write_row(). */
 		break;
 
-	default:
+		default:
 		/* vbi_export_printf() and _vbi_export_grow_buffer_space()
 		   allocate more buffer memory as needed, but for
 		   efficiency we estimate the XPM image size and
 		   allocate it all in advance. */
 
 		header_size = 109	/* header (incl. 4-digit width
-					   and height and 2-digit col num) */
+							   and height and 2-digit col num) */
 			+ 15 * 40	/* color palette with 40 members */
 			+ 13;		/* row start comment */
-                if (gfx->transparency)
-                        header_size -= 7 - 4;   /* "#RRGGBB" - "None" */
+		if (gfx->transparency)
+			header_size -= 7 - 4;   /* "#RRGGBB" - "None" */
 		xpm_row_size = (((image_width + 4) * char_height)
 				<< scale) >> 1;
 		footer_size = 3;	/* closing bracket */
 
-                if (   ((NULL != title) && (0 != title[0]))
-                    || ((NULL != e->creator) && (0 != e->creator[0])) ) {
+		if (   ((NULL != title) && (0 != title[0]))
+				|| ((NULL != e->creator) && (0 != e->creator[0])) ) {
 			header_size += 7; /* XPMEXT keyword */
 			footer_size += 12; /* XPMENDEXT keyword */
 			if (NULL != title) {
@@ -1657,7 +1861,7 @@ xpm_export			(vbi_export *		e,
 		if (VBI_EXPORT_TARGET_ALLOC == e->target) {
 			needed = header_size + footer_size
 				+ xpm_row_size * pg->rows;
-	} else {
+		} else {
 			/* We flush() after writing header, footer and
 			   each row. */
 			needed = MAX (header_size, footer_size);
@@ -1665,29 +1869,29 @@ xpm_export			(vbi_export *		e,
 		}
 
 		if (unlikely (!_vbi_export_grow_buffer_space (e, needed)))
-		return FALSE;
+			return FALSE;
 	}
 
-        if (!xpm_write_header (e, pg, image_width, image_height,
-			       title, e->creator))
+	if (!xpm_write_header (e, pg, image_width, image_height,
+				title, e->creator))
 		goto failed;
 
-        for (row = 0; row < (unsigned int) pg->rows; ++row) {
-                draw_row_indexed (pg, &pg->text[row * pg->columns],
-				  indexed_image, pen, image_width,
-				  !e->reveal, pg->columns < 40);
+	for (row = 0; row < (unsigned int) pg->rows; ++row) {
+		draw_row_indexed (pg, &pg->text[row * pg->columns],
+				indexed_image, pen, image_width,
+				!e->reveal, pg->columns < 40);
 
-                if (!xpm_write_row (e, indexed_image,
-				    image_width, char_height, scale))
+		if (!xpm_write_row (e, indexed_image,
+					image_width, char_height, scale))
 			goto failed;
 	}
 
 	if (!xpm_write_footer (e, title, e->creator))
 		goto failed;
 
-        result = TRUE;
+	result = TRUE;
 
- failed:
+failed:
 	free (indexed_image);
 
 	return result;
@@ -1717,9 +1921,9 @@ vbi_export_class_xpm = {
 VBI_AUTOREG_EXPORT_MODULE(vbi_export_class_xpm)
 
 
-/*
- *  PNG - Portable Network Graphics File
- */
+	/*
+	 *  PNG - Portable Network Graphics File
+	 */
 #ifdef HAVE_LIBPNG
 
 #include "png.h"
@@ -1727,8 +1931,8 @@ VBI_AUTOREG_EXPORT_MODULE(vbi_export_class_xpm)
 
 static void
 write_data			(png_structp		png_ptr,
-				 png_bytep		data,
-				 png_size_t		length)
+		png_bytep		data,
+		png_size_t		length)
 {
 	gfx_instance *gfx = (gfx_instance *) png_get_io_ptr (png_ptr);
 
@@ -1745,14 +1949,14 @@ flush_data			(png_structp		png_ptr)
 
 static vbi_bool
 write_png			(gfx_instance *		gfx,
-				 const vbi_page *	pg,
-				 png_structp		png_ptr,
-				 png_infop		info_ptr,
-				 png_bytep		image,
-				 png_bytep *		row_pointer,
-				 unsigned int		ww,
-				 unsigned int		wh,
-				 unsigned int		scale)
+		const vbi_page *	pg,
+		png_structp		png_ptr,
+		png_infop		info_ptr,
+		png_bytep		image,
+		png_bytep *		row_pointer,
+		unsigned int		ww,
+		unsigned int		wh,
+		unsigned int		scale)
 {
 	png_color palette[80];
 	png_byte alpha[80];
@@ -1764,20 +1968,20 @@ write_png			(gfx_instance *		gfx,
 		return FALSE;
 
 	png_set_write_fn (png_ptr,
-			  (voidp) gfx,
-			  write_data,
-			  flush_data);
+			(voidp) gfx,
+			write_data,
+			flush_data);
 
 	png_set_IHDR (png_ptr,
-		      info_ptr,
-		      ww,
-		      (wh << scale) >> 1,
-		      /* bit_depth */ 8,
-		PNG_COLOR_TYPE_PALETTE,
-		      gfx->double_height ?
+			info_ptr,
+			ww,
+			(wh << scale) >> 1,
+			/* bit_depth */ 8,
+			PNG_COLOR_TYPE_PALETTE,
+			gfx->double_height ?
 			PNG_INTERLACE_ADAM7 : PNG_INTERLACE_NONE,
-		PNG_COMPRESSION_TYPE_DEFAULT,
-		PNG_FILTER_TYPE_DEFAULT);
+			PNG_COMPRESSION_TYPE_DEFAULT,
+			PNG_FILTER_TYPE_DEFAULT);
 
 	/* Could be optimized (or does libpng?) */
 	for (i = 0; i < 40; i++) {
@@ -1797,48 +2001,48 @@ write_png			(gfx_instance *		gfx,
 
 	png_set_PLTE (png_ptr, info_ptr, palette, 80);
 
-        if (gfx->transparency)
-	        png_set_tRNS (png_ptr, info_ptr, alpha, 80, NULL);
+	if (gfx->transparency)
+		png_set_tRNS (png_ptr, info_ptr, alpha, 80, NULL);
 
 	png_set_gAMA (png_ptr, info_ptr, 1.0 / 2.2);
 
-        get_image_title (&gfx->export, pg, title, sizeof (title));
+	get_image_title (&gfx->export, pg, title, sizeof (title));
 
 	CLEAR (text);
 
-        i = 0;
-        if (0 != title[0]) {
-	        text[i].key = "Title";
-	        text[i].text = title;
-	        text[i].compression = PNG_TEXT_COMPRESSION_NONE;
-                i++;
-		}
-        if (NULL != gfx->export.creator && 0 != gfx->export.creator[0]) {
-	        text[i].key = "Software";
-	        text[i].text = gfx->export.creator;
-	        text[i].compression = PNG_TEXT_COMPRESSION_NONE;
-                i++;
+	i = 0;
+	if (0 != title[0]) {
+		text[i].key = "Title";
+		text[i].text = title;
+		text[i].compression = PNG_TEXT_COMPRESSION_NONE;
+		i++;
+	}
+	if (NULL != gfx->export.creator && 0 != gfx->export.creator[0]) {
+		text[i].key = "Software";
+		text[i].text = gfx->export.creator;
+		text[i].compression = PNG_TEXT_COMPRESSION_NONE;
+		i++;
 	}
 	png_set_text (png_ptr, info_ptr, text, i);
 
 	png_write_info (png_ptr, info_ptr);
 
 	switch (scale) {
-	case 0:
-		for (i = 0; i < wh / 2; i++)
-			row_pointer[i] = image + i * 2 * ww;
-		break;
+		case 0:
+			for (i = 0; i < wh / 2; i++)
+				row_pointer[i] = image + i * 2 * ww;
+			break;
 
-	case 1:
-		for (i = 0; i < wh; i++)
-			row_pointer[i] = image + i * ww;
-		break;
+		case 1:
+			for (i = 0; i < wh; i++)
+				row_pointer[i] = image + i * ww;
+			break;
 
-	case 2:
-		for (i = 0; i < wh; i++)
-			row_pointer[i * 2 + 0] =
-			row_pointer[i * 2 + 1] = image + i * ww;
-		break;
+		case 2:
+			for (i = 0; i < wh; i++)
+				row_pointer[i * 2 + 0] =
+					row_pointer[i * 2 + 1] = image + i * ww;
+			break;
 	}
 
 	png_write_image (png_ptr, row_pointer);
@@ -1854,7 +2058,7 @@ png_export(vbi_export *e, vbi_page *pg)
 	gfx_instance *gfx = PARENT(e, gfx_instance, export);
 	png_structp png_ptr;
 	png_infop info_ptr;
-        uint8_t pen[128];
+	uint8_t pen[128];
 	png_bytep *row_pointer;
 	png_bytep image;
 	int ww, wh, rowstride, row_adv, scale;
@@ -1862,18 +2066,18 @@ png_export(vbi_export *e, vbi_page *pg)
 	int i;
 
 	assert ((sizeof(png_byte) == sizeof(uint8_t))
-		&& (sizeof(*image) == sizeof(uint8_t)));
+			&& (sizeof(*image) == sizeof(uint8_t)));
 
 	if (pg->columns < 40) /* caption */ {
 		/* characters are already line-doubled */
 		scale = !!gfx->double_height;
-	        ww = CCW * pg->columns;
-	        wh = CCH * pg->rows;
+		ww = CCW * pg->columns;
+		wh = CCH * pg->rows;
 		row_adv = pg->columns * CCW * CCH;
 	} else {
 		scale = 1 + !!gfx->double_height;
-	        ww = TCW * pg->columns;
-	        wh = TCH * pg->rows;
+		ww = TCW * pg->columns;
+		wh = TCH * pg->rows;
 		row_adv = pg->columns * TCW * TCH;
 	}
 
@@ -1881,36 +2085,36 @@ png_export(vbi_export *e, vbi_page *pg)
 
 	if (!(row_pointer = malloc(sizeof(*row_pointer) * wh * 2))) {
 		vbi_export_error_printf(e, _("Unable to allocate %d byte buffer."),
-					sizeof(*row_pointer) * wh * 2);
+				sizeof(*row_pointer) * wh * 2);
 		return FALSE;
 	}
 
 	if (!(image = malloc(wh * ww * sizeof(*image)))) {
 		vbi_export_error_printf(e, _("Unable to allocate %d KB image buffer."),
-					wh * ww * sizeof(*image) / 1024);
-	free(row_pointer);
+				wh * ww * sizeof(*image) / 1024);
+		free(row_pointer);
 		return FALSE;
 	}
 
-        /* draw the image */
+	/* draw the image */
 
-        if (pg->drcs_clut) {
-                for (i = 2; i < 2 + 8 + 32; i++) {
-                        pen[i]      = pg->drcs_clut[i]; /* opaque */
-                        pen[i + 64] = pg->drcs_clut[i] + 40; /* translucent */
-                }
-        }
+	if (pg->drcs_clut) {
+		for (i = 2; i < 2 + 8 + 32; i++) {
+			pen[i]      = pg->drcs_clut[i]; /* opaque */
+			pen[i + 64] = pg->drcs_clut[i] + 40; /* translucent */
+		}
+	}
 
-        for (row = 0; row < pg->rows; row++) {
-                draw_row_indexed(pg, &pg->text[row * pg->columns],
-                                 image + row * row_adv,  pen, rowstride,
-                                 !e->reveal, pg->columns < 40);
+	for (row = 0; row < pg->rows; row++) {
+		draw_row_indexed(pg, &pg->text[row * pg->columns],
+				image + row * row_adv,  pen, rowstride,
+				!e->reveal, pg->columns < 40);
 	}
 
 	/* Now save the image */
 
 	if (!(png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING,
-						NULL, NULL, NULL)))
+					NULL, NULL, NULL)))
 		goto unknown_error;
 
 	if (!(info_ptr = png_create_info_struct(png_ptr))) {
@@ -1919,7 +2123,7 @@ png_export(vbi_export *e, vbi_page *pg)
 	}
 
 	if (!write_png (gfx, pg, png_ptr, info_ptr,
-			image, row_pointer, ww, wh, scale)) {
+				image, row_pointer, ww, wh, scale)) {
 		png_destroy_write_struct (&png_ptr, &info_ptr);
 		goto write_error;
 	}
@@ -1972,9 +2176,9 @@ VBI_AUTOREG_EXPORT_MODULE(vbi_export_class_png)
 
 #endif /* HAVE_LIBPNG */
 
-/*
-Local variables:
-c-set-style: K&R
-c-basic-offset: 8
-End:
+	/*
+	   Local variables:
+	   c-set-style: K&R
+	   c-basic-offset: 8
+	   End:
 */

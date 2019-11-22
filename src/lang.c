@@ -14,8 +14,8 @@
  *  Library General Public License for more details.
  *
  *  You should have received a copy of the GNU Library General Public
- *  License along with this library; if not, write to the 
- *  Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, 
+ *  License along with this library; if not, write to the
+ *  Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  *  Boston, MA  02110-1301  USA.
  */
 
@@ -30,8 +30,18 @@
 #include <assert.h>
 
 #include "lang.h"
+#ifdef ANDROID
+#include <android/log.h>
+#define LOG_TAG    "ZVBI"
+#define LOGI(...)  __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
+#define LOGE(...)  __android_log_print(ANDROID_LOG_ERROR,LOG_TAG,__VA_ARGS__)
 
-/* 
+#else
+#define LOGI(...) printf(__VA_ARGS__)
+#define LOGE(...) printf(__VA_ARGS__)
+#endif
+
+/*
  *  Teletext font descriptors
  *
  *  ETS 300 706 Table 32, 33, 34
@@ -43,8 +53,8 @@ vbi_font_descriptors[88] = {
 	{ LATIN_G0, LATIN_G2, GERMAN,		"Deutsch" },
 	{ LATIN_G0, LATIN_G2, SWE_FIN_HUN,	"Svenska / Suomi / Magyar" },
 	{ LATIN_G0, LATIN_G2, ITALIAN,		"Italiano" },
-	{ LATIN_G0, LATIN_G2, FRENCH,		"Français" },
-	{ LATIN_G0, LATIN_G2, PORTUG_SPANISH,	"Português / Español" },
+	{ LATIN_G0, LATIN_G2, FRENCH,		"Franï¿½ais" },
+	{ LATIN_G0, LATIN_G2, PORTUG_SPANISH,	"Portuguï¿½s / Espaï¿½ol" },
 	{ LATIN_G0, LATIN_G2, CZECH_SLOVAK,	"Cesky / Slovencina" },
 	{ LATIN_G0, LATIN_G2, NO_SUBSET,	0 },
 
@@ -53,7 +63,7 @@ vbi_font_descriptors[88] = {
 	{ LATIN_G0, LATIN_G2, GERMAN,		"Deutsch" },
 	{ LATIN_G0, LATIN_G2, SWE_FIN_HUN,	"Svenska / Suomi / Magyar" },
 	{ LATIN_G0, LATIN_G2, ITALIAN,		"Italiano" },
-	{ LATIN_G0, LATIN_G2, FRENCH,		"Français" },
+	{ LATIN_G0, LATIN_G2, FRENCH,		"Franï¿½ais" },
 	{ LATIN_G0, LATIN_G2, NO_SUBSET,	0 },
 	{ LATIN_G0, LATIN_G2, CZECH_SLOVAK,	"Cesky / Slovencina" },
 	{ LATIN_G0, LATIN_G2, NO_SUBSET,	0 },
@@ -63,10 +73,10 @@ vbi_font_descriptors[88] = {
 	{ LATIN_G0, LATIN_G2, GERMAN,		"Deutsch" },
 	{ LATIN_G0, LATIN_G2, SWE_FIN_HUN,	"Svenska / Suomi / Magyar" },
 	{ LATIN_G0, LATIN_G2, ITALIAN,		"Italiano" },
-	{ LATIN_G0, LATIN_G2, FRENCH,		"Français" },
-	{ LATIN_G0, LATIN_G2, PORTUG_SPANISH,	"Português / Español" },
-	{ LATIN_G0, LATIN_G2, TURKISH,		"Türkçe" },
-	{ LATIN_G0, LATIN_G2, NO_SUBSET,	0 },
+	{ LATIN_G0, LATIN_G2, FRENCH,		"Franï¿½ais" },
+	{ LATIN_G0, LATIN_G2, PORTUG_SPANISH,	"Portuguï¿½s / Espaï¿½ol" },
+	{ LATIN_G0, LATIN_G2, TURKISH,		"Tï¿½rkï¿½e" },
+	{ LATIN_G0, LATIN_G2, ENGLISH,	0 },
 
 	/* 24 - Central and Southeast Europe */
 	{ LATIN_G0, LATIN_G2, NO_SUBSET,	0 },
@@ -76,10 +86,10 @@ vbi_font_descriptors[88] = {
 	{ LATIN_G0, LATIN_G2, NO_SUBSET,	0 },
 	{ LATIN_G0, LATIN_G2, SERB_CRO_SLO,	"Srbski / Hrvatski / Slovenscina" },
 	{ LATIN_G0, LATIN_G2, NO_SUBSET,	0 },
-	{ LATIN_G0, LATIN_G2, RUMANIAN,		"Româna" },
+	{ LATIN_G0, LATIN_G2, RUMANIAN,		"Romï¿½na" },
 
 	/* 32 - Cyrillic */
-	{ CYRILLIC_1_G0, CYRILLIC_G2, NO_SUBSET, "Srpski / Hrvatski" },
+	{ CYRILLIC_1_G0, CYRILLIC_G2, NO_SUBSET, "Srpski / Hrvatski" }, //Serbian/Croatian
 	{ LATIN_G0, LATIN_G2, GERMAN,		"Deutsch" },
 	{ LATIN_G0, LATIN_G2, ESTONIAN,		"Eesti" },
 	{ LATIN_G0, LATIN_G2, LETT_LITH,	"Lettish / Lietuviskai" },
@@ -104,8 +114,8 @@ vbi_font_descriptors[88] = {
 	{ 0, 0, NO_SUBSET,			0 },
 	{ 0, 0, NO_SUBSET,			0 },
 	{ 0, 0, NO_SUBSET,			0 },
-	{ LATIN_G0, LATIN_G2, TURKISH,		"Türkçe" },
-	{ GREEK_G0, GREEK_G2, NO_SUBSET,	"Ellinika'" },
+	{ LATIN_G0, LATIN_G2, TURKISH,		"Tï¿½rkï¿½e" },
+	{ GREEK_G0, GREEK_G2, NO_SUBSET,	"Ellinika'" }, //Greek
 
 	{ 0, 0, NO_SUBSET,			0 },
 	{ 0, 0, NO_SUBSET,			0 },
@@ -121,7 +131,7 @@ vbi_font_descriptors[88] = {
 	{ 0, 0, NO_SUBSET,			0 },
 	{ 0, 0, NO_SUBSET,			0 },
 	{ 0, 0, NO_SUBSET,			0 },
-	{ LATIN_G0, ARABIC_G2, FRENCH,		"Alarabia / Français" },
+	{ LATIN_G0, ARABIC_G2, FRENCH,		"Alarabia / Franï¿½ais" },
 	{ 0, 0, NO_SUBSET,			0 },
 	{ 0, 0, NO_SUBSET,			0 },
 	{ ARABIC_G0, ARABIC_G2, NO_SUBSET,	"Alarabia" },
@@ -141,9 +151,10 @@ vbi_font_descriptors[88] = {
 	{ 0, 0, NO_SUBSET,			0 },
 	{ 0, 0, NO_SUBSET,			0 },
 	{ 0, 0, NO_SUBSET,			0 },
-	{ HEBREW_G0, ARABIC_G2, NO_SUBSET,	"Ivrit" },
+	{ HEBREW_G0, ARABIC_G2, NO_SUBSET,	"Ivrit" }, //Hebrew
 	{ 0, 0, NO_SUBSET,			0 },
 	{ ARABIC_G0, ARABIC_G2, NO_SUBSET,	"Alarabia" },
+
 };
 
 #if 0
@@ -245,7 +256,7 @@ cyrillic_2_g0[64] = {
 };
 
 /*
- *  ETS 300 706 Table 40: Cyrillic G0 Primary Set - Option 3 - Ukrainian 
+ *  ETS 300 706 Table 40: Cyrillic G0 Primary Set - Option 3 - Ukrainian
  */
 static const unsigned short
 cyrillic_3_g0[64] = {
@@ -356,9 +367,9 @@ hebrew_g0[37] = {
  * @param n National character subset as listed in section 15, only
  *     applicable to character set LATIN_G0, ignored otherwise.
  * @param c Character code in range 0x20 ... 0x7F.
- * 
+ *
  * Translate Teletext character code to Unicode.
- * 
+ *
  * Exceptions:
  * ETS 300 706 Table 36 Latin National Subset Turkish character
  * 0x23 Turkish currency symbol is not representable in Unicode,
@@ -378,9 +389,9 @@ hebrew_g0[37] = {
  * separate code exists for Latin capital letter C. This function
  * is unable to distinguish between uses, so it will always translate
  * Greek A and B to Alpha and Beta, C to Latin C.
- * 
+ *
  * Private codes U+F000 ... U+F7FF are reserved for DRCS.
- * 
+ *
  * @return
  * Unicode value.
  */
@@ -390,13 +401,16 @@ vbi_teletext_unicode(vbi_character_set s, vbi_national_subset n, unsigned int c)
 	int i;
 
 	assert(c >= 0x20 && c <= 0x7F);
-
+	//LOGE("vbi_character_set %d vbi_national_subset %d unicode 0x%x", s, n, c);
 	switch (s) {
 	case LATIN_G0:
 		/* shortcut */
 		if (0xF8000019UL & (1 << (c & 31))) {
 			if (n > 0) {
 				assert(n < 14);
+				/* Ugly change */
+				if (n == 4)
+					n = 2;
 
 				for (i = 0; i < 13; i++)
 					if (c == national_subset[0][i])
@@ -410,7 +424,6 @@ vbi_teletext_unicode(vbi_character_set s, vbi_national_subset n, unsigned int c)
 			else if (c == 0x7F)
 				return 0x25A0u;
 		}
-
 		return c;
 
 	case LATIN_G2:
@@ -461,7 +474,9 @@ vbi_teletext_unicode(vbi_character_set s, vbi_national_subset n, unsigned int c)
 		return arabic_g2[c - 0x20];
 
 	case HEBREW_G0:
-		if (c < 0x5B)
+		if (c == 0x23)
+			return 0xA3;
+		else if (c < 0x5B)
 			return c;
 		else
 			return hebrew_g0[c - 0x5B];
@@ -508,7 +523,7 @@ composed[12 * 16] = {
  * @internal
  * @param a Accent 0 ... 15.
  * @param c Character code in range 0x20 ... 0x7F.
- * 
+ *
  * Translate Teletext Latin G1 character 0x20 ... 0x7F combined
  * with accent code from Latin G2 0x40 ... 0x4F to Unicode. Not all
  * combinations are representable in Unicode.
@@ -528,6 +543,9 @@ vbi_teletext_composed_unicode(unsigned int a, unsigned int c)
 		return vbi_teletext_unicode(LATIN_G0, NO_SUBSET, c);
 
 	c += a << 12;
+	//Patch: l'--> 7b -->0x2049
+	if (c == 0x206c)
+		c = 0xF06C;
 
 	for (i = 0; i < sizeof(composed) / sizeof(composed[0]); i++)
 		if (composed[i] == c)

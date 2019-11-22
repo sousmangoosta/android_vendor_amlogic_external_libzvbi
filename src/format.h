@@ -14,8 +14,8 @@
  *  Library General Public License for more details.
  *
  *  You should have received a copy of the GNU Library General Public
- *  License along with this library; if not, write to the 
- *  Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, 
+ *  License along with this library; if not, write to the
+ *  Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  *  Boston, MA  02110-1301  USA.
  */
 
@@ -141,13 +141,13 @@ typedef enum {
 
  * Double width or height characters expand into the next
  * column right and/or next row below.
- * 
+ *
  * Scanning two rows left to right, you will find<br>
  * <pre>
  * VBI_NORMAL_SIZE | VBI_DOUBLE_WIDTH VBI_OVER_TOP | VBI_DOUBLE_HEIGHT  | VBI_DOUBLE_SIZE  VBI_OVER_TOP
  *       x         |         x             x       | VBI_DOUBLE_HEIGHT2 | VBI_DOUBLE_SIZE2 VBI_OVER_BOTTOM
  * </pre>
- * 
+ *
  * A VBI_DOUBLE_HEIGHT2, VBI_DOUBLE_SIZE2, VBI_OVER_TOP, VBI_OVER_BOTTOM
  * vbi_char has the same character unicode and attributes as the top/left anchor.
  * Partial characters (like a single VBI_DOUBLE_HEIGHT2) will not appear, so
@@ -215,10 +215,10 @@ typedef struct vbi_char {
 	unsigned	drcs_clut_offs	: 8;
 	/**
 	 * Character code according to ISO 10646 UCS-2 (not UTF-16).
-	 * 
+	 *
 	 * All Closed Caption characters can be represented in Unicode,
 	 * but unfortunately not all Teletext characters.
-	 * 
+	 *
 	 * <a href="http://www.etsi.org">ETS 300 706
 	 * </a> Table 36 Latin National Subset Turkish, character
 	 * 0x23 "Turkish currency symbol" is not representable in Unicode,
@@ -231,7 +231,7 @@ typedef struct vbi_char {
 	 * Table 48 G3 "Smooth Mosaics and Line Drawing Set" is not
 	 * representable in Unicode, translated to private code
 	 * U+EF20 ... U+EF7F.
-	 * 
+	 *
 	 * Teletext Level 2.5+ DRCS are represented by private code
 	 * U+F000 ... U+F7FF. The 6 lsb select character 0x00 ... 0x3F
 	 * from a DRCS plane, the 5 msb select DRCS plane 0 ... 31, see
@@ -265,7 +265,7 @@ struct vbi_font_descr;
 typedef struct vbi_page {
 	/**
 	 * Points back to the source context.
-	 */ 
+	 */
 	vbi_decoder *		vbi;
 
 	/**
@@ -294,7 +294,7 @@ typedef struct vbi_page {
 	 * The page contents, these are @a rows x @a columns without
 	 * padding between the rows. See vbi_char for details.
 	 */
-	vbi_char		text[1056];
+	vbi_char		text[1200];
 
 	/**
 	 * To speed up rendering these variables mark the rows
@@ -305,7 +305,7 @@ typedef struct vbi_page {
 	 * negative numbers up (towards lower row numbers), positive
 	 * numbers down. For example -1 means row @a y0 + 1 ... @a y1
 	 * moved to @a y0 ... @a y1 - 1, erasing row @a y1 to all spaces.
-	 * 
+	 *
 	 * Practically this is only used in Closed Caption roll-up
 	 * mode, otherwise all rows are always marked dirty. Clients
 	 * are free to ignore this information.
@@ -356,7 +356,7 @@ typedef struct vbi_page {
 	 * whereby drcs_clut[0] shall be replaced by vbi_char->foreground,
 	 * drcs_clut[1] by vbi_char->background. (Renderers are supposed to convert the
 	 * drcs_clut into a private color map of the desired pixel format.)
-	 * 
+	 *
 	 * Practically vbi_char->drcs_clut_offs encodes the DRCS color depth
 	 * and selects between the vbi_char colors and one of two 4- or
 	 * 16-entry Color Look-Up Tables. Also the different resolution of DRCS and

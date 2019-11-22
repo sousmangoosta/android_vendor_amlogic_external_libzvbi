@@ -18,8 +18,8 @@
  *  Library General Public License for more details.
  *
  *  You should have received a copy of the GNU Library General Public
- *  License along with this library; if not, write to the 
- *  Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, 
+ *  License along with this library; if not, write to the
+ *  Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  *  Boston, MA  02110-1301  USA.
  */
 
@@ -135,7 +135,7 @@ vbi_set_log_fn			(vbi_log_mask		mask,
 
 /* Should this be public? */
 static void
-vbi_event_enable(vbi_decoder *vbi, int mask) 
+vbi_event_enable(vbi_decoder *vbi, int mask)
 {
 	int activate;
 
@@ -169,17 +169,17 @@ vbi_event_enable(vbi_decoder *vbi, int mask)
  * @param event_mask Events the handler is waiting for.
  * @param handler Event handler function.
  * @param user_data Pointer passed to the handler.
- * 
+ *
  * @deprecated
  * Replaces all existing handlers with this @a handler function,
  * ignoring @a user_data. Use vbi_event_handler_register() in new code.
- * 
+ *
  * @return
  * FALSE on failure.
  */
 vbi_bool
 vbi_event_handler_add(vbi_decoder *vbi, int event_mask,
-		      vbi_event_handler handler, void *user_data) 
+		      vbi_event_handler handler, void *user_data)
 {
 	struct event_handler *eh, **ehp;
 	int found = 0, mask = 0, was_locked;
@@ -206,7 +206,7 @@ vbi_event_handler_add(vbi_decoder *vbi, int event_mask,
 				eh->event_mask = event_mask;
 		}
 
-		mask |= eh->event_mask;	
+		mask |= eh->event_mask;
 		ehp = &eh->next;
 	}
 
@@ -234,7 +234,7 @@ vbi_event_handler_add(vbi_decoder *vbi, int event_mask,
 /**
  * @param vbi Initialized vbi decoding context.
  * @param handler Event handler function.
- * 
+ *
  * @deprecated
  * This functions lacks a user_data parameter.
  * Use vbi_event_handler_register() in new code.
@@ -243,33 +243,33 @@ void
 vbi_event_handler_remove(vbi_decoder *vbi, vbi_event_handler handler)
 {
 	vbi_event_handler_add(vbi, 0, handler, NULL);
-} 
+}
 
 /**
  * @param vbi Initialized vbi decoding context.
  * @param event_mask Events the handler is waiting for.
  * @param handler Event handler function.
  * @param user_data Pointer passed to the handler.
- * 
+ *
  * Registers a new event handler. @a event_mask can be any 'or' of VBI_EVENT_
  * symbols, -1 for all events and 0 for none. When the @a handler with
  * @a user_data is already registered, its event_mask will be changed. Any
  * number of handlers can be registered, also different handlers for the same
  * event which will be called in registration order.
- * 
+ *
  * Apart of adding handlers this function also enables and disables decoding
  * of data services depending on the presence of at least one handler for the
  * respective data. A @c VBI_EVENT_TTX_PAGE handler for example enables Teletext
  * decoding.
- * 
+ *
  * This function can be safely called at any time, even from a handler.
- * 
+ *
  * @return
  * @c FALSE on failure.
  */
 vbi_bool
 vbi_event_handler_register(vbi_decoder *vbi, int event_mask,
-		           vbi_event_handler handler, void *user_data) 
+		           vbi_event_handler handler, void *user_data)
 {
 	struct event_handler *eh, **ehp;
 	int found = 0, mask = 0, was_locked;
@@ -297,7 +297,7 @@ vbi_event_handler_register(vbi_decoder *vbi, int event_mask,
 				eh->event_mask = event_mask;
 		}
 
-		mask |= eh->event_mask;	
+		mask |= eh->event_mask;
 		ehp = &eh->next;
 	}
 
@@ -326,14 +326,14 @@ vbi_event_handler_register(vbi_decoder *vbi, int event_mask,
  * @param vbi Initialized vbi decoding context.
  * @param handler Event handler function.
  * @param user_data Pointer passed to the handler.
- * 
+ *
  * Unregisters an event handler.
  *
  * Apart of removing a handler this function also disables decoding
  * of data services when no handler is registered to consume the
  * respective data. Removing the last @c VBI_EVENT_TTX_PAGE handler for
  * example disables Teletext decoding.
- * 
+ *
  * This function can be safely called at any time, even from a handler
  * removing itself or another handler, and regardless if the @a handler
  * has been successfully registered.
@@ -349,10 +349,10 @@ vbi_event_handler_unregister(vbi_decoder *vbi,
  * @internal
  * @param vbi Initialized vbi decoding context.
  * @param ev The event to send.
- * 
+ *
  * Traverses the list of event handlers and calls each handler waiting
 * * for this @a ev->type of event, passing @a ev as parameter.
- * 
+ *
  * This function is reentrant, but not supposed to be called from
  * different threads to ensure correct event order.
  */
@@ -396,18 +396,18 @@ current_time(void)
  *   for example from function gettimeofday(). @a time should only
  *   increment, the latest time entered is considered the current time
  *   for activity calculation.
- * 
+ *
  * @brief Main function of the data service decoder.
  *
  * Decodes zero or more lines of sliced VBI data from the same video
  * frame, updates the decoder state and calls event handlers.
- * 
+ *
  * @a timestamp shall advance by 1/30 to 1/25 seconds whenever calling this
  * function. Failure to do so will be interpreted as frame dropping, which
  * starts a resynchronization cycle, eventually a channel switch may be assumed
  * which resets even more decoder state. So even if a frame did not contain
  * any useful data this function must be called, with @a lines set to zero.
- * 
+ *
  * @note This is one of the few not reentrant libzvbi functions. If multiple
  * threads call this with the same @a vbi context you must implement your
  * own locking mechanism. Never call this function from an event handler.
@@ -448,7 +448,7 @@ vbi_decode(vbi_decoder *vbi, vbi_sliced *sliced, int lines, double time)
 #endif
 	} else {
 		pthread_mutex_lock(&vbi->chswcd_mutex);
-		
+
 		if (vbi->chswcd > 0 && --vbi->chswcd == 0) {
 			pthread_mutex_unlock(&vbi->chswcd_mutex);
 			vbi_chsw_reset(vbi, 0);
@@ -552,7 +552,7 @@ vbi_chsw_reset(vbi_decoder *vbi, vbi_nuid identified)
 /**
  * @param vbi VBI decoding context.
  * @param nuid Set to zero for now.
- * 
+ *
  * Call this after switching away from the channel (RF channel,
  * video input line, precisely: the network) from which this context
  * used to receive vbi data, to reset the decoding context accordingly.
@@ -618,7 +618,7 @@ vbi_transp_colormap(vbi_decoder *vbi, vbi_rgba *d, vbi_rgba *s, int entries)
 /**
  * @param vbi Initialized vbi decoding context.
  * @param brightness 0 dark ... 255 bright, default 128.
- * 
+ *
  * Change brightness of text pages, this affects the
  * color palette of pages fetched with vbi_fetch_vt_page() and
  * vbi_fetch_cc_page().
@@ -634,7 +634,7 @@ vbi_set_brightness(vbi_decoder *vbi, int brightness)
 /**
  * @param vbi Initialized vbi decoding context.
  * @param contrast -128 inverse ... 0 none ... 127 maximum, default 64.
- * 
+ *
  * Change contrast of text pages, this affects the
  * color palette of pages fetched with vbi_fetch_vt_page() and
  * vbi_fetch_cc_page().
@@ -656,9 +656,9 @@ vbi_set_contrast(vbi_decoder *vbi, int contrast)
  *   is written in, a pointer to the language name (Latin-1) will
  *   be stored here, @c NULL if the language is unknown. @a language
  *   can be @c NULL if this information is not needed.
- * 
+ *
  * Returns information about the page.
- * 
+ *
  * For Closed Caption pages (@a pgno 1 ... 8) @a subno will always
  * be zero, @a language set or @c NULL. The return value will be
  * @c VBI_SUBTITLE_PAGE for page 1 ... 4 (Closed Caption
@@ -768,8 +768,8 @@ vbi_classify_page(vbi_decoder *vbi, vbi_pgno pgno,
 }
 
 /**
- * @param pi 
- * 
+ * @param pi
+ *
  * Convenience function to set a vbi_program_info
  * structure to defaults.
  */
@@ -844,9 +844,11 @@ vbi_decoder_delete(vbi_decoder *vbi)
 	pthread_mutex_destroy(&vbi->event_mutex);
 	pthread_mutex_destroy(&vbi->chswcd_mutex);
 
-	cache_network_unref (vbi->cn);
+	if (vbi->cn)
+		cache_network_unref (vbi->cn);
 
-	vbi_cache_delete (vbi->ca);
+	if (vbi->ca)
+		vbi_cache_delete (vbi->ca);
 
 	CLEAR (*vbi);
 
@@ -855,7 +857,7 @@ vbi_decoder_delete(vbi_decoder *vbi)
 
 /**
  * @brief Allocate a new data service decoder instance.
- * 
+ *
  * @return
  * vbi_decoder pointer or @c NULL on failure, probably due to lack
  * of memory.
@@ -935,15 +937,15 @@ vbi_version			(unsigned int *		major,
 }
 
 /**
- * @param vbi 
- * @param pgno 
- * @param subno 
- * 
+ * @param vbi
+ * @param pgno
+ * @param subno
+ *
  * @deprecated At the moment pages can only be added to the
  * cache but not removed unless the decoder is reset. That
  * will change, making the result volatile in a multithreaded
  * environment.
- * 
+ *
  * @returns
  * @c TRUE if the given page is cached.
  */
@@ -963,11 +965,11 @@ vbi_is_cached			(vbi_decoder *		vbi,
 }
 
 /**
- * @param vbi 
+ * @param vbi
  * @param pgno
- * 
+ *
  * @deprecated Rationale same as vbi_is_cached().
- * 
+ *
  * @returns
  * Highest cached subpage of this page.
  */

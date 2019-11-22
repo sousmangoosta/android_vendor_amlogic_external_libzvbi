@@ -14,8 +14,8 @@
  *  Library General Public License for more details.
  *
  *  You should have received a copy of the GNU Library General Public
- *  License along with this library; if not, write to the 
- *  Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, 
+ *  License along with this library; if not, write to the
+ *  Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  *  Boston, MA  02110-1301  USA.
  */
 
@@ -42,10 +42,22 @@
 #include "hamm.h"
 #include "lang.h"
 #include "teletext_decoder.h"
+#ifdef ANDROID
+#include <android/log.h>
+#endif
+
 
 extern const char _zvbi_intl_domainname[];
 
 #include "intl-priv.h"
+
+#define LOG_TAG    "ZVBI"
+#ifdef ANDORID
+#define LOGI(...)  __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
+#else
+#define LOGI(...) printf(__VA_ARGS__)
+#endif
+
 
 #ifndef TELETEXT_DEBUG
 #  define TELETEXT_DEBUG 0
@@ -135,6 +147,8 @@ flof_links(vbi_page *pg, cache_page *vtp)
 
 		    		pg->nav_link[k].pgno = vtp->data.lop.link[k].pgno;
 		    		pg->nav_link[k].subno = vtp->data.lop.link[k].subno;
+			} else if (k < 4) {
+				pg->nav_link[k].pgno = 0;
 			}
 
 			if (i >= COLUMNS)
@@ -324,7 +338,7 @@ next_ait(vbi_decoder *vbi, int pgno, int subno, cache_page **mvtp)
 
 			vtp = _vbi_cache_get_page
 				(vbi->ca, vbi->cn,
-				 vbi->cn->btt_link[i].pgno, 
+				 vbi->cn->btt_link[i].pgno,
 				 vbi->cn->btt_link[i].subno,
 				 /* subno_mask */ 0x3f7f);
 			if (!vtp) {
@@ -611,8 +625,8 @@ pdc_method_a(vbi_page *pg, cache_page *vtp, struct program_entry *pe)
 
 	for (row = 1; row <= 23; row++) {
 		for (column = 0; column <= 38;) {
-			int ctrl1 = vbi_parity(vtp->data.lop.raw[row][column]);
-			int ctrl2 = vbi_parity(vtp->data.lop.raw[row][column + 1]);
+			int ctrl1 = vbi_unham8(vtp->data.lop.raw[row][column]);
+			int ctrl2 = vbi_unham8(vtp->data.lop.raw[row][column + 1]);
 
 fprintf(stderr, "%d %d %02x %02x\n", row, column, ctrl1, ctrl2);
 
@@ -639,7 +653,7 @@ fprintf(stderr, "NUM %d %d\n", row, column);
 				value = 0;
 
 				for (digits = 0; column < 40; column++) {
-					int c = vbi_parity(vtp->data.lop.raw[row][column]);
+					int c = vbi_unham8(vtp->data.lop.raw[row][column]);
 
 					if (IS_PMA_CTRL(c)) {
 						break;
@@ -733,7 +747,7 @@ fprintf(stderr, "AD %06x\n", value);
 					break;
 
 				case 8:
-					start = bcd2time(value >> 16); 
+					start = bcd2time(value >> 16);
 					stop = bcd2time(value);
 
 					if ((start | stop) < 0
@@ -841,7 +855,7 @@ keyword(vbi_link *ld, uint8_t *p, int column,
 
 		if (s[i + j] == '.') {
 			if (l < 1)
-				return i;		
+				return i;
 			l = 0;
 			j++;
 			k++;
@@ -894,11 +908,11 @@ zap_links(vbi_page *pg, int row)
 		j++;
 	}
 
-	buffer[0] = ' '; 
+	buffer[0] = ' ';
 	buffer[j + 1] = ' ';
 	buffer[j + 2] = 0;
 
-	for (i = 0; i < COLUMNS; i += n) { 
+	for (i = 0; i < COLUMNS; i += n) {
 		n = keyword(&ld, buffer, i + 1,
 			pg->pgno, pg->subno, &b);
 
@@ -920,7 +934,7 @@ zap_links(vbi_page *pg, int row)
  * @param column Column 0 ... pg->columns - 1 of the character in question.
  * @param row Row 0 ... pg->rows - 1 of the character in question.
  * @param ld Place to store information about the link.
- * 
+ *
  * A vbi_page (in practice only Teletext pages) may contain hyperlinks
  * such as HTTP URLs, e-mail addresses or links to other pages. Characters
  * being part of a hyperlink have a set vbi_char->link flag, this function
@@ -989,7 +1003,7 @@ vbi_resolve_link(vbi_page *pg, int column, int row, vbi_link *ld)
 /**
  * @param pg With vbi_fetch_vt_page() obtained vbi_page.
  * @param ld Place to store information about the link.
- * 
+ *
  * All Teletext pages have a built-in home link, by default
  * page 100, but can also be the magazine intro page or another
  * page selected by the editor.
@@ -1037,11 +1051,11 @@ ait_title(vbi_decoder *vbi, cache_page *vtp, struct ttx_ait_title *ait, char *bu
  * @param subno Subpage number.
  * @param buf Place to store the title, Latin-1 format, at least
  *   41 characters including the terminating zero.
- * 
+ *
  * Given a Teletext page number this function tries to deduce a
  * page title for bookmarks or other purposes, mainly from navigation
  * data. (XXX TODO: FLOF)
- * 
+ *
  * @return
  * @c TRUE if a title has been found.
  */
@@ -1060,7 +1074,7 @@ vbi_page_title(vbi_decoder *vbi, int pgno, int subno, char *buf)
 
 				vtp = _vbi_cache_get_page
 					(vbi->ca, vbi->cn,
-					 vbi->cn->btt_link[i].pgno, 
+					 vbi->cn->btt_link[i].pgno,
 					 vbi->cn->btt_link[i].subno,
 					 /* subno_mask */ 0x3f7f);
 				if (!vtp) {
@@ -1125,13 +1139,15 @@ character_set_designation(struct vbi_font_descr **font,
 
 		if (VALID_CHARACTER_SET(charset_code))
 			font[i] = vbi_font_descriptors + charset_code;
+		LOGI("pgno %x font %d charset_code %d national %d final %d",
+			vtp->pgno, i, ext->charset_code[i], vtp->national, charset_code);
 	}
 #endif
 }
 
 static void
 screen_color(vbi_page *pg, int flags, int color)
-{ 
+{
 	pg->screen_color = color;
 
 	if (color == VBI_TRANSPARENT_BLACK
@@ -1161,7 +1177,7 @@ resolve_obj_address		(vbi_decoder *		vbi,
 	packet = ((address >> 7) & 3);
 	i = ((address >> 5) & 3) * 3 + type;
 
-	printv("obj invocation, source page %03x/%04x, "
+	LOGI("obj invocation, source page %03x/%04x, "
 		"pointer packet %d triplet %d\n", pgno, s1, packet + 1, i);
 
 	vtp = _vbi_cache_get_page (vbi->ca, vbi->cn, pgno, s1, 0x000F);
@@ -1212,7 +1228,7 @@ resolve_obj_address		(vbi_decoder *		vbi,
 				packet, pointer % 13, pointer);
 		else
 			printv("... object start in packet 26/%d, triplet %d (pointer %d)\n",
-				packet - 26, pointer % 13, pointer);	
+				packet - 26, pointer % 13, pointer);
 	}
 
 	trip = vtp->data.pop.triplet + pointer;
@@ -1274,8 +1290,8 @@ enhance(vbi_decoder *vbi,
 			active_column = column; \
 			break; \
 		}       \
-        \
-		printv("flush [%04x%c,F%d%c,B%d%c,S%d%c,O%d%c,H%d%c] %d ... %d\n",      \
+		\
+		printf("flush [%04x%c,F%d%c,B%d%c,S%d%c,O%d%c,H%d%c] %d ... %d\n",      \
 			ac.unicode, mac.unicode ? '*' : ' ',    \
 			ac.foreground, mac.foreground ? '*' : ' ',      \
 			ac.background, mac.background ? '*' : ' ',      \
@@ -1899,12 +1915,12 @@ enhance(vbi_decoder *vbi,
 					ac.flash = !!(p->data & 3);
 					mac.flash = ~0;
 
-					printv("enh col %d flash 0x%02x\n", active_column, p->data);
 				}
 
 				break;
 
 			case 0x08:		/* modified G0 and G2 character set designation */
+				LOGI("modified G0 and G2 character set designation pgno %x %d", pg->pgno);
 				if (max_level >= VBI_WST_LEVEL_2p5) {
 					if (column > active_column)
 						flush(column);
@@ -1914,12 +1930,12 @@ enhance(vbi_decoder *vbi,
 					else
 						font = pg->font[0];
 
-					printv("enh col %d modify character set %d\n", active_column, p->data);
 				}
 
 				break;
 
 			case 0x09:		/* G0 character */
+				LOGI("G0 character enhance pgno %x", pg->pgno);
 				if (max_level >= VBI_WST_LEVEL_2p5 && p->data >= 0x20) {
 					if (column > active_column)
 						flush(column);
@@ -1971,6 +1987,7 @@ enhance(vbi_decoder *vbi,
 
 			case 0x0D:		/* drcs character invocation */
 			{
+				LOGI("drcs character enhance pgno %x", pg->pgno);
 				int normal = p->data >> 6;
 				int offset = p->data & 0x3F;
 				enum ttx_page_function function;
@@ -2111,6 +2128,7 @@ enhance(vbi_decoder *vbi,
 			}
 
 			case 0x0F:		/* G2 character */
+				LOGI("G2 character enhance pgno %x data: 0x%x", pg->pgno, p->data);
 				if (p->data >= 0x20) {
 					if (column > active_column)
 						flush(column);
@@ -2122,12 +2140,15 @@ enhance(vbi_decoder *vbi,
 				break;
 
 			case 0x10 ... 0x1F:	/* characters including diacritical marks */
+
 				if (p->data >= 0x20) {
 					if (column > active_column)
 						flush(column);
 
 					unicode = vbi_teletext_composed_unicode(
 						p->mode - 0x10, p->data);
+					LOGI("G2 character diacritical marks pgno %x data 0x%x mode 0x%x unicode 0x%x",
+						 pg->pgno, p->data, p->mode, unicode);
 			store:
 					printv("enh row %d col %d print 0x%02x/0x%02x -> 0x%04x\n",
 						active_row, active_column, p->mode, p->data,
@@ -2406,15 +2427,15 @@ column_41			(vbi_page *		pg,
  * @internal
  * @param vbi Initialized vbi_decoder context.
  * @param pg Place to store the formatted page.
- * @param vtp Raw Teletext page. 
+ * @param vtp Raw Teletext page.
  * @param max_level Format the page at this Teletext implementation level.
  * @param display_rows Number of rows to format, between 1 ... 25.
  * @param navigation Analyse the page and add navigation links,
  *   including TOP and FLOF.
- * 
+ *
  * Format a page @a pg from a raw Teletext page @a vtp. This function is
  * used internally by libzvbi only.
- * 
+ *
  * @return
  * @c TRUE if the page could be formatted.
  */
@@ -2428,14 +2449,16 @@ vbi_format_vt_page(vbi_decoder *vbi,
 	struct ttx_magazine *mag;
 	struct ttx_extension *ext;
 	int column, row, i;
+	int sub_newflash_page = 0;
+	int inside_box = 0;
 
 	if (vtp->function != PAGE_FUNCTION_LOP &&
 	    vtp->function != PAGE_FUNCTION_EACEM_TRIGGER)
 		return FALSE;
 
-	printv("\nFormatting page %03x/%04x pg=%p lev=%d rows=%d nav=%d\n",
-	       vtp->pgno, vtp->subno, pg, max_level, display_rows, navigation);
-	       
+	LOGI("Formatting page %03x/%04x flags %d pg=%p lev=%d rows=%d nav=%d",
+	       vtp->pgno, vtp->subno, vtp->flags, pg, max_level, display_rows, navigation);
+
 	memcpy(vtp->data.lop.raw[0]+32, vbi->vt.header+32, 8);
 
 	display_rows = SATURATE(display_rows, 1, ROWS);
@@ -2459,9 +2482,15 @@ vbi_format_vt_page(vbi_decoder *vbi,
 		: cache_network_magazine (vbi->cn, vtp->pgno);
 
 	if (vtp->x28_designations & 0x11)
+	{
+		LOGI("format_vt_page use ext_lop ext");
 		ext = &vtp->data.ext_lop.ext;
+	}
 	else
+	{
+		LOGI("format_vt_page use mag ext");
 		ext = &mag->extension;
+	}
 
 	/* Character set designation */
 
@@ -2478,11 +2507,14 @@ vbi_format_vt_page(vbi_decoder *vbi,
 	/* Opacity */
 
 	pg->page_opacity[1] =
-		(vtp->flags & (C5_NEWSFLASH | C6_SUBTITLE | C10_INHIBIT_DISPLAY)) ?
+		(vtp->flags & (C5_NEWSFLASH | C6_SUBTITLE)) ?
 			VBI_TRANSPARENT_SPACE : VBI_OPAQUE;
+
 	pg->boxed_opacity[1] =
 		(vtp->flags & C10_INHIBIT_DISPLAY) ?
 			VBI_TRANSPARENT_SPACE : VBI_SEMI_TRANSPARENT;
+
+	sub_newflash_page = vtp->flags & (C5_NEWSFLASH | C6_SUBTITLE);
 
 	if (vtp->flags & C7_SUPPRESS_HEADER) {
 		pg->page_opacity[0] = VBI_TRANSPARENT_SPACE;
@@ -2499,13 +2531,15 @@ vbi_format_vt_page(vbi_decoder *vbi,
 	/* Current page number in header */
 
 	snprintf (buf, sizeof (buf),
-		  "\2%x.%02x\7", vtp->pgno, vtp->subno & 0xff);
+		  "P%x     ", vtp->pgno);
 
 	/* Level 1 formatting */
 
 	i = 0;
 	pg->double_height_lower = 0;
 
+	//bottom row of display row is used for displaying sub pg no.
+	//So skip it.
 	for (row = 0; row < display_rows; row++) {
 		struct vbi_font_descr *font;
 		int mosaic_unicodes; /* 0xEE00 separate, 0xEE20 contiguous */
@@ -2540,11 +2574,11 @@ vbi_format_vt_page(vbi_decoder *vbi,
 			if (row == 0 && column < 8) {
 				raw = buf[column];
 				i++;
-			} else if ((raw = vbi_unpar8 (vtp->data.lop.raw[0][i++])) < 0)
+			} else if ((raw = vbi_unpar8 (vtp->data.lop.raw[0][i++])) < 0) {
 				raw = ' ';
+			}
 
 			/* set-at spacing attributes */
-
 			switch (raw) {
 			case 0x09:		/* steady */
 				ac.flash = FALSE;
@@ -2579,7 +2613,12 @@ vbi_format_vt_page(vbi_decoder *vbi,
 				break;
 			}
 
-			if (raw <= 0x1F) {
+			if (!inside_box && (vtp->flags  & 0xc000))
+			{
+				 ac.unicode = 0x20;
+				 LOGI("pgno %x row %d, col %d, inside_box", pg->pgno, row, column);
+			}
+			else if (raw <= 0x1F) {
 				ac.unicode = (hold & mosaic) ? held_mosaic_unicode : 0x0020;
 			} else {
 				if (mosaic && (raw & 0x20)) {
@@ -2588,6 +2627,13 @@ vbi_format_vt_page(vbi_decoder *vbi,
 				} else
 					ac.unicode = vbi_teletext_unicode(font->G0,
 									  font->subset, raw);
+			}
+
+			if ((vtp->flags & C10_INHIBIT_DISPLAY) && row != 0)
+			{
+				ac.unicode = 0x20;
+				ac.foreground	= ext->foreground_clut + VBI_WHITE;
+				ac.background	= ext->background_clut + VBI_BLACK;
 			}
 
 			if (wide_char) {
@@ -2624,12 +2670,17 @@ vbi_format_vt_page(vbi_decoder *vbi,
 				if (column < (COLUMNS - 1)
 				    && vbi_unpar8 (vtp->data.lop.raw[0][i]) == 0x0a)
 					ac.opacity = pg->page_opacity[row > 0];
+				inside_box = 0;
 				break;
 
 			case 0x0B:		/* start box */
 				if (column < (COLUMNS - 1)
 				    && vbi_unpar8 (vtp->data.lop.raw[0][i]) == 0x0b)
+				{
 					ac.opacity = pg->boxed_opacity[row > 0];
+					ac.unicode = 0x20;
+				}
+				inside_box = 1;
 				break;
 
 			case 0x0D:		/* double height */
@@ -2670,6 +2721,7 @@ vbi_format_vt_page(vbi_decoder *vbi,
 			}
 		}
 
+
 		if (double_height) {
 			for (column = 0; column < EXT_COLUMNS; column++) {
 				ac = acp[column];
@@ -2679,7 +2731,7 @@ vbi_format_vt_page(vbi_decoder *vbi,
 					ac.size = VBI_DOUBLE_HEIGHT2;
 					acp[EXT_COLUMNS + column] = ac;
 					break;
-		
+
 				case VBI_DOUBLE_SIZE:
 					ac.size = VBI_DOUBLE_SIZE2;
 					acp[EXT_COLUMNS + column] = ac;
@@ -2732,8 +2784,8 @@ vbi_format_vt_page(vbi_decoder *vbi,
 		}
 
 		if (vtp->x26_designations & 1) {
-			printv("enhancement packets %08x\n",
-			       vtp->x26_designations);
+			LOGI("pgno %x enhancement packets %08x\n",
+			       pg->pgno,vtp->x26_designations);
 			success = enhance(vbi, mag, ext, pg, vtp, LOCAL_ENHANCEMENT_DATA,
 				vtp->data.enh_lop.enh, elements(vtp->data.enh_lop.enh),
 				0, 0, max_level, display_rows == 1, NULL);
@@ -2773,7 +2825,7 @@ vbi_format_vt_page(vbi_decoder *vbi,
 			} else if (vbi->cn->have_top)
 				top_navigation_bar(vbi, pg, vtp);
 
-//			pdc_method_a(pg, vtp, NULL);
+			//pdc_method_a(pg, vtp, NULL);
 		}
 	}
 
@@ -2816,13 +2868,13 @@ vbi_format_vt_page(vbi_decoder *vbi,
  * @param display_rows Number of rows to format, between 1 ... 25.
  * @param navigation Analyse the page and add navigation links,
  *   including TOP and FLOF.
- * 
+ *
  * Fetches a Teletext page designated by @a pgno and @a subno from the
  * cache, formats and stores it in @a pg. Formatting is limited to row
  * 0 ... @a display_rows - 1 inclusive. The really useful values
  * are 1 (format header only) or 25 (everything). Likewise
  * @a navigation can be used to save unnecessary formatting time.
- * 
+ *
  * Although safe to do, this function is not supposed to be called from
  * an event handler since rendering may block decoding for extended
  * periods of time.
@@ -2838,7 +2890,7 @@ vbi_bool
 vbi_fetch_vt_page(vbi_decoder *vbi, vbi_page *pg,
 		  vbi_pgno pgno, vbi_subno subno,
 		  vbi_wst_level max_level,
-		  int display_rows, vbi_bool navigation)
+		  int display_rows, vbi_bool navigation, int* page_type)
 {
 	cache_page *vtp;
 	vbi_bool success;
@@ -2860,20 +2912,38 @@ vbi_fetch_vt_page(vbi_decoder *vbi, vbi_page *pg,
 
 		for (row = 1; row < ROWS; row++)
 			zap_links(pg, row);
+		if (page_type)
+			*page_type = 0x100000;
 
 		return TRUE;
 
 	default:
 		vtp = _vbi_cache_get_page (vbi->ca, vbi->cn, pgno, subno, -1);
 		if (!vtp)
+		{
 			return FALSE;
+		}
 		success = vbi_format_vt_page(vbi, pg, vtp,
 					     max_level, display_rows,
 					     navigation);
 		cache_page_unref (vtp);
+		if (page_type)
+			*page_type = vtp->flags;
 		return success;
 	}
 }
+
+int vbi_get_page_type(vbi_decoder *vbi, vbi_pgno pgno, vbi_subno subno)
+{
+	cache_page *vtp;
+	vtp = _vbi_cache_get_page (vbi->ca, vbi->cn, pgno, subno, -1);
+	if (!vtp)
+	{
+		return -1;
+	}
+	return vtp->flags;
+}
+
 extern cache_page *
 _vbi_cache_find_next_page_2 (vbi_cache * ca,
                                 int dir,
