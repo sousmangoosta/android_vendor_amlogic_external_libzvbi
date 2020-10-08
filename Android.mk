@@ -29,8 +29,8 @@ LOCAL_C_INCLUDES += vendor/amlogic/dvb/include/am_adp
 ifeq ($(shell test $(PLATFORM_SDK_VERSION) -ge 28&& echo OK),OK)
     ifeq ($(BOARD_COMPILE_IN_SYSTEM), true)
         LOCAL_C_INCLUDES += $(LOCAL_PATH)/../icu/icu4c/source/common
-        LOCAL_STATIC_LIBRARIES += libicuuc libicuuc_stubdata
-        LOCAL_SHARED_LIBRARIES += liblog libam_adp
+        LOCAL_STATIC_LIBRARIES += libicuuc_stubdata
+        LOCAL_SHARED_LIBRARIES += liblog libam_adp libicuuc
     else
         LOCAL_C_INCLUDES += $(LOCAL_PATH)/../icu/icu4c/source/common
         LOCAL_STATIC_LIBRARIES += libicuuc_vendor libicuuc_stubdata_vendor
@@ -67,8 +67,8 @@ LOCAL_C_INCLUDES += $(LOCAL_PATH)/../../dvb/include/am_adp
 LOCAL_C_INCLUDES += $(LOCAL_PATH)/../dvb/include/am_adp
 
 LOCAL_C_INCLUDES += $(LOCAL_PATH)/../icu/icu4c/source/common
-LOCAL_STATIC_LIBRARIES += libicuuc libicuuc_stubdata libam_adp
-LOCAL_SHARED_LIBRARIES += liblog
+LOCAL_STATIC_LIBRARIES += libicuuc_stubdata libam_adp
+LOCAL_SHARED_LIBRARIES += liblog libicuuc
 LOCAL_PRELINK_MODULE := false
 
 include $(BUILD_STATIC_LIBRARY)
