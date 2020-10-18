@@ -62,13 +62,13 @@ LOCAL_CFLAGS+=-DHAVE_S64_U64
 endif
 
 LOCAL_ARM_MODE := arm
-LOCAL_C_INCLUDES := external/icu4c/common
+LOCAL_C_INCLUDES := external/icu/libandroidicu/include
 LOCAL_C_INCLUDES += $(LOCAL_PATH)/../../dvb/include/am_adp
 LOCAL_C_INCLUDES += $(LOCAL_PATH)/../dvb/include/am_adp
 
-LOCAL_C_INCLUDES += $(LOCAL_PATH)/../icu/icu4c/source/common
-LOCAL_STATIC_LIBRARIES += libicuuc_stubdata libam_adp
-LOCAL_SHARED_LIBRARIES += liblog libicuuc
+#LOCAL_C_INCLUDES += $(LOCAL_PATH)/../icu/icu4c/source/common
+LOCAL_STATIC_LIBRARIES += libandroidicu_static libam_adp
+LOCAL_SHARED_LIBRARIES += liblog libandroidicu
 LOCAL_PRELINK_MODULE := false
 
 include $(BUILD_STATIC_LIBRARY)
